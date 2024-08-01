@@ -33,7 +33,7 @@ export default {
       try {
         const response = await fetch('/api/passwords', {
           headers: {
-            'Authorization': Bearer ${localStorage.getItem('token')},
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
           },
         });
         if (response.ok) {
@@ -53,7 +53,7 @@ export default {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': Bearer ${localStorage.getItem('token')},
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
           },
           body: JSON.stringify(newPassword),
         });
