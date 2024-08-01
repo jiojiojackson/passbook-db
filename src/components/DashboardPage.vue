@@ -18,7 +18,7 @@ import PasswordList from './components/PasswordList.vue'
 import PasswordForm from './components/PasswordForm.vue'
 
 export default {
-  name: 'Dashboard',
+  name: 'DashboardPage',
   components: {
     PasswordList,
     PasswordForm
