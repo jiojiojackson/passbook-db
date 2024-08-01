@@ -2,11 +2,13 @@
   <div class="dashboard-container">
     <h1>密码管理器</h1>
     <button @click="logout">登出</button>
-    <div class="main-content">
-      <password-list :passwords="passwords" @toggle-visibility="togglePasswordVisibility" />
-    </div>
-    <div class="sidebar">
-      <password-form @add-password="addPassword" />
+    <div class="content-wrapper">
+      <div class="main-content">
+        <password-list :passwords="passwords" @toggle-visibility="togglePasswordVisibility" />
+      </div>
+      <div class="sidebar">
+        <password-form @add-password="addPassword" />
+      </div>
     </div>
   </div>
 </template>
@@ -91,6 +93,14 @@ export default {
 .dashboard-container {
   display: flex;
   flex-direction: column;
+  padding: 20px;
+}
+
+.content-wrapper {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  margin-top: 20px;
 }
 
 .main-content {
