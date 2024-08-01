@@ -14,8 +14,8 @@
 <script>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import PasswordList from '.PasswordList.vue'
-import PasswordForm from '.PasswordForm.vue'
+import PasswordList from './PasswordList.vue'
+import PasswordForm from './PasswordForm.vue'
 
 export default {
   name: 'DashboardPage',
