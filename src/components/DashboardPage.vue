@@ -9,10 +9,7 @@
     <div class="content-wrapper">
       <div class="main-content">
         <h2 class="section-title">我的密码</h2>
-        <password-list 
-          :passwords="passwords" 
-          @toggle-visibility="togglePasswordVisibility" 
-        />
+        <password-list :passwords="passwords" @toggle-visibility="togglePasswordVisibility" />
       </div>
       <div class="sidebar">
         <h2 class="section-title">添加新密码</h2>
@@ -35,7 +32,65 @@ export default {
     PasswordForm
   },
   setup() {
-    // ... 脚本部分保持不变
+    const passwords = ref([])
+    const router = useRouter()
+
+    const fetchPasswords = async () => {
+      try {
+        const response = await fetch('/api/passwords', {
+          headers: {
+            'Authorization': Bearer ${ localStorage.getItem('token') },
+          },
+    });
+    if (response.ok) {
+      const data = await response.json();
+      passwords.value = data.map(pwd => ({ ...pwd, visible: false }));
+    } else if (response.status === 401) {
+      router.push('/login');
+    }
+  } catch(error) {
+    console.error('Error fetching passwords:', error);
+  }
+}
+
+const addPassword = async (newPassword) => {
+  try {
+    const response = await fetch('/api/passwords', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': Bearer ${ localStorage.getItem('token') },
+          },
+  body: JSON.stringify(newPassword),
+        });
+if (response.ok) {
+  const data = await response.json();
+  passwords.value.push({ ...data, visible: false });
+} else if (response.status === 401) {
+  router.push('/login');
+}
+      } catch (error) {
+  console.error('Error adding password:', error);
+}
+    }
+
+const togglePasswordVisibility = (index) => {
+  passwords.value[index].visible = !passwords.value[index].visible;
+}
+
+const logout = () => {
+  localStorage.removeItem('token');
+  router.push('/login');
+}
+
+onMounted(fetchPasswords);
+
+return {
+  passwords,
+  addPassword,
+  togglePasswordVisibility,
+  logout
+}
   }
 }
 </script>
