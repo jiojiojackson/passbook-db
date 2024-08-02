@@ -8,8 +8,8 @@
         <label for="username">用户名:</label>
         <input id="username" v-model="username" required>
       </div>
+      <label for="password">密码:</label>
       <div class="password-input">
-        <label for="password">密码:</label>
         <input id="password" v-model="password" required>
         <button type="button" @click="generatePassword">生成</button>
       </div>
