@@ -165,6 +165,9 @@ export default {
 
 .sidebar {
   width: 300px;
+  position: fixed;
+  top: 100px; /* 调整位置 */
+  right: 20px; /* 调整位置 */
 }
 
 .search-box {
