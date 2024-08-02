@@ -24,6 +24,7 @@ const authenticateToken = (req, res, next) => {
 module.exports = async (req, res) => {
   await authenticateToken(req, res, async () => {
     const { method } = req;
+    const { id } = req.params;
 
     switch (method) {
       case 'GET':
@@ -36,18 +37,38 @@ module.exports = async (req, res) => {
         break;
       case 'POST':
         try {
-          const { url, username, password, passremark } = req.body;
+          const { url, username, password, remarks } = req.body;
           const { rows } = await pool.query(
             'INSERT INTO passwords (user_id, url, username, password, remarks) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-            [req.user.userId, url, username, password, passremark]
+            [req.user.userId, url, username, password, remarks]
           );
           res.status(201).json(rows[0]);
         } catch (error) {
           res.status(500).json({ error: 'Error adding password' });
         }
         break;
+      case 'PUT':
+        try {
+          const { url, username, password, remarks } = req.body;
+          const { rows } = await pool.query(
+            'UPDATE passwords SET url = $1, username = $2, password = $3, remarks = $4 WHERE id = $5 AND user_id = $6 RETURNING *',
+            [url, username, password, remarks, id, req.user.userId]
+          );
+          res.status(200).json(rows[0]);
+        } catch (error) {
+          res.status(500).json({ error: 'Error updating password' });
+        }
+        break;
+      case 'DELETE':
+        try {
+          await pool.query('DELETE FROM passwords WHERE id = $1 AND user_id = $2', [id, req.user.userId]);
+          res.status(204).end();
+        } catch (error) {
+          res.status(500).json({ error: 'Error deleting password' });
+        }
+        break;
       default:
-        res.setHeader('Allow', ['GET', 'POST']);
+        res.setHeader('Allow', ['GET', 'POST', 'PUT', 'DELETE']);
         res.status(405).end(`Method ${method} Not Allowed`);
     }
   });

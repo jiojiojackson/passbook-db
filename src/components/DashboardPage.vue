@@ -6,7 +6,10 @@
     </header>
     <div class="content-wrapper">
       <div class="main-content">
-        <password-list :passwords="filteredPasswords" @toggle-visibility="togglePasswordVisibility" />
+        <password-list :passwords="filteredPasswords" 
+                       @toggle-visibility="togglePasswordVisibility"
+                       @edit-password="openEditModal"
+                       @delete-password="deletePassword" />
       </div>
       <div class="sidebar">
         <password-form @add-password="addPassword" />
@@ -14,6 +17,32 @@
           <input v-model="searchQuery" type="text" placeholder="搜索..." />
           <button @click="searchPasswords">搜索</button>
         </div>
+      </div>
+    </div>
+
+    <div v-if="showModal" class="modal">
+      <div class="modal-content">
+        <h3>编辑密码</h3>
+        <form @submit.prevent="updatePassword">
+          <div>
+            <label for="url">URL:</label>
+            <input id="url" v-model="currentPassword.url" required>
+          </div>
+          <div>
+            <label for="username">用户名:</label>
+            <input id="username" v-model="currentPassword.username" required>
+          </div>
+          <div>
+            <label for="password">密码:</label>
+            <input id="password" v-model="currentPassword.password" required>
+          </div>
+          <div>
+            <label for="remarks">备注:</label>
+            <input id="remarks" v-model="currentPassword.remarks">
+          </div>
+          <button type="submit">更新</button>
+          <button type="button" @click="closeModal">取消</button>
+        </form>
       </div>
     </div>
   </div>
@@ -34,6 +63,8 @@ export default {
   setup() {
     const passwords = ref([])
     const searchQuery = ref('')
+    const showModal = ref(false)
+    const currentPassword = ref(null)
     const router = useRouter()
 
     const fetchPasswords = async () => {
@@ -100,6 +131,56 @@ export default {
       )
     })
 
+    const openEditModal = (password) => {
+      currentPassword.value = { ...password }
+      showModal.value = true
+    }
+
+    const closeModal = () => {
+      showModal.value = false
+    }
+
+    const updatePassword = async () => {
+      try {
+        const response = await fetch(`/api/passwords/${currentPassword.value.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          },
+          body: JSON.stringify(currentPassword.value),
+        });
+        if (response.ok) {
+          const updatedPassword = await response.json();
+          const index = passwords.value.findIndex(pwd => pwd.id === updatedPassword.id);
+          passwords.value[index] = updatedPassword;
+          closeModal();
+        } else if (response.status === 401) {
+          router.push('/login');
+        }
+      } catch (error) {
+        console.error('Error updating password:', error);
+      }
+    }
+
+    const deletePassword = async (passwordId) => {
+      try {
+        const response = await fetch(`/api/passwords/${passwordId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          },
+        });
+        if (response.ok) {
+          passwords.value = passwords.value.filter(pwd => pwd.id !== passwordId);
+        } else if (response.status === 401) {
+          router.push('/login');
+        }
+      } catch (error) {
+        console.error('Error deleting password:', error);
+      }
+    }
+
     onMounted(fetchPasswords);
 
     return {
@@ -109,7 +190,13 @@ export default {
       togglePasswordVisibility,
       logout,
       searchPasswords,
-      filteredPasswords
+      filteredPasswords,
+      showModal,
+      currentPassword,
+      openEditModal,
+      closeModal,
+      updatePassword,
+      deletePassword
     }
   }
 }
@@ -166,8 +253,8 @@ export default {
 .sidebar {
   width: 300px;
   position: fixed;
-  top: 100px; /* 调整位置 */
-  right: 20px; /* 调整位置 */
+  top: 100px;
+  right: 60px;
 }
 
 .search-box {
@@ -197,5 +284,24 @@ export default {
 
 .search-box button:hover {
   background-color: #40a9ff;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: 4px;
+  width: 300px;
 }
 </style>
