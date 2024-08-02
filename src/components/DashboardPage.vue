@@ -6,17 +6,21 @@
     </header>
     <div class="content-wrapper">
       <div class="main-content">
-        <password-list :passwords="passwords" @toggle-visibility="togglePasswordVisibility" />
+        <password-list :passwords="filteredPasswords" @toggle-visibility="togglePasswordVisibility" />
       </div>
       <div class="sidebar">
         <password-form @add-password="addPassword" />
+        <div class="search-box">
+          <input v-model="searchQuery" type="text" placeholder="搜索..." />
+          <button @click="searchPasswords">搜索</button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import PasswordList from './PasswordList.vue'
 import PasswordForm from './PasswordForm.vue'
@@ -29,6 +33,7 @@ export default {
   },
   setup() {
     const passwords = ref([])
+    const searchQuery = ref('')
     const router = useRouter()
 
     const fetchPasswords = async () => {
@@ -79,13 +84,32 @@ export default {
       router.push('/login');
     }
 
+    const searchPasswords = () => {
+      filteredPasswords.value = passwords.value.filter(pwd => 
+        pwd.url.includes(searchQuery.value) ||
+        pwd.username.includes(searchQuery.value) ||
+        pwd.remarks.includes(searchQuery.value)
+      )
+    }
+
+    const filteredPasswords = computed(() => {
+      return passwords.value.filter(pwd => 
+        pwd.url.includes(searchQuery.value) ||
+        pwd.username.includes(searchQuery.value) ||
+        pwd.remarks.includes(searchQuery.value)
+      )
+    })
+
     onMounted(fetchPasswords);
 
     return {
       passwords,
+      searchQuery,
       addPassword,
       togglePasswordVisibility,
-      logout
+      logout,
+      searchPasswords,
+      filteredPasswords
     }
   }
 }
@@ -143,10 +167,23 @@ export default {
   width: 300px;
 }
 
-button {
+.search-box {
+  margin-top: 20px;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
   margin-bottom: 10px;
-  padding: 10px 20px;
-  font-size: 16px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+}
+
+.search-box button {
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
   background-color: #1890ff;
   color: white;
   border: none;
@@ -155,7 +192,7 @@ button {
   transition: background-color 0.3s;
 }
 
-button:hover {
+.search-box button:hover {
   background-color: #40a9ff;
 }
 </style>
