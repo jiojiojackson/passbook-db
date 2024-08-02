@@ -13,6 +13,10 @@
         <input id="password" v-model="password" required>
         <button type="button" @click="generatePassword">生成</button>
       </div>
+      <div>
+        <label for="passremark">备注:</label>
+        <input id="passremark" v-model="passremark" required>
+      </div>
       <button type="submit">添加</button>
     </form>
   </template>
@@ -27,16 +31,19 @@
       const url = ref('')
       const username = ref('')
       const password = ref('')
+      const passremark = ref('')
   
       const addPassword = () => {
         emit('add-password', {
           url: url.value,
           username: username.value,
-          password: password.value
+          password: password.value,
+          passremark: passremark.value
         })
         url.value = ''
         username.value = ''
         password.value = ''
+        passremark.value = ''
       }
   
       const generatePassword = () => {
@@ -52,6 +59,7 @@
         url,
         username,
         password,
+        passremark,
         addPassword,
         generatePassword
       }

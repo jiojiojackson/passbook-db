@@ -3,6 +3,7 @@
       <div v-for="(password, index) in passwords" :key="index" class="password-item">
         <div><strong>应用地址:</strong> {{ password.url }}</div>
         <div><strong>用户名:</strong> {{ password.username }}</div>
+        <div><strong>备注:</strong> {{ password.passremark }}</div>
         <div>
           <strong>密码:</strong>
           <span @click="$emit('toggle-visibility', index)">

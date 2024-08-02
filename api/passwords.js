@@ -36,10 +36,10 @@ module.exports = async (req, res) => {
         break;
       case 'POST':
         try {
-          const { url, username, password } = req.body;
+          const { url, username, password, passremark } = req.body;
           const { rows } = await pool.query(
-            'INSERT INTO passwords (user_id, url, username, password) VALUES ($1, $2, $3, $4) RETURNING *',
-            [req.user.userId, url, username, password]
+            'INSERT INTO passwords (user_id, url, username, password, remarks) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [req.user.userId, url, username, password, passremark]
           );
           res.status(201).json(rows[0]);
         } catch (error) {
