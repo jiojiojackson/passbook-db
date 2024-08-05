@@ -9,7 +9,17 @@
       <div class="password-actions">
         <button @click="() => toggleVisibility(index)">显示/隐藏</button>
         <button @click="() => $emit('edit-password', password)">编辑</button>
-        <button @click="() => $emit('delete-password', password.id)">删除</button>
+        <button @click="requestDelete(password)">删除</button>
+      </div>
+    </div>
+
+    <!-- Modal for delete confirmation -->
+    <div v-if="showDeleteModal" class="modal">
+      <div class="modal-content">
+        <h3>确认删除</h3>
+        <p>您确定要删除此密码吗？</p>
+        <button @click="confirmDelete">确认删除</button>
+        <button @click="cancelDelete">放弃删除</button>
       </div>
     </div>
   </div>
@@ -23,10 +33,32 @@ export default {
       required: true
     }
   },
+  data() {
+    return {
+      showDeleteModal: false,
+      passwordToDelete: null,
+    };
+  },
   methods: {
     toggleVisibility(index) {
       this.$emit('toggle-visibility', index);
-    }
+    },
+    requestDelete(password) {
+      this.passwordToDelete = password;
+      this.showDeleteModal = true;
+    },
+    confirmDelete() {
+      if (this.passwordToDelete) {
+        // Emit the delete event with the password id
+        this.$emit('delete-password', this.passwordToDelete.id);
+        this.passwordToDelete = null;
+      }
+      this.showDeleteModal = false;
+    },
+    cancelDelete() {
+      this.passwordToDelete = null;
+      this.showDeleteModal = false;
+    },
   }
 }
 </script>
@@ -76,5 +108,24 @@ export default {
 
 .password-actions button:nth-child(3):hover {
   background-color: #ff7875;
+}
+
+/* Styles for the modal */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 5px;
+  text-align: center;
 }
 </style>
