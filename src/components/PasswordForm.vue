@@ -31,19 +31,19 @@
       const url = ref('')
       const username = ref('')
       const password = ref('')
-      const passremark = ref('')
+      const remarks = ref('')
   
       const addPassword = () => {
         emit('add-password', {
           url: url.value,
           username: username.value,
           password: password.value,
-          passremark: passremark.value
+          remarks: remarks.value
         })
         url.value = ''
         username.value = ''
         password.value = ''
-        passremark.value = ''
+        remarks.value = ''
       }
   
       const generatePassword = () => {
