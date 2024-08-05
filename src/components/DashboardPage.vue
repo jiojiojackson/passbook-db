@@ -263,6 +263,14 @@ export default {
 
 .sidebar {
   width: 300px;
+  position: fixed;
+  top: 100px; /* adjust based on the height of your header */
+  right: 60px; /* adjust based on your layout */
+  height: calc(100vh - 120px); /* adjust based on the height of your header and padding */
+  background-color: #fff;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
 }
 
 .search-box {
