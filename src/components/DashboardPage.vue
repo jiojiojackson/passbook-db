@@ -2,7 +2,7 @@
   <div class="dashboard-container">
     <header class="dashboard-header">
       <h1>密码管理器</h1>
-      <button class="logout-button" @click="logout">登出</button>
+      
     </header>
     <div class="content-wrapper">
       <div class="main-content">
@@ -14,6 +14,7 @@
         />
       </div>
       <div v-if="isSidebarOpen" class="sidebar">
+        <button class="logout-button" @click="logout">登出</button>
         <password-form @add-password="addPassword" />
         <div class="search-box">
           <input v-model="searchQuery" type="text" placeholder="搜索..." />
