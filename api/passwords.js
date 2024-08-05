@@ -36,20 +36,7 @@ app.get('/api/passwords', async (req, res) => {
   }
 });
 
-app.post('/api/passwords', async (req, res) => {
-  try {
-    const { url, username, password, remarks } = req.body;
-    const { rows } = await pool.query(
-      'INSERT INTO passwords (user_id, url, username, password, remarks) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [req.user.userId, url, username, password, remarks]
-    );
-    res.status(201).json(rows[0]);
-  } catch (error) {
-    res.status(500).json({ error: 'Error adding password' });
-  }
-});
-
-app.put('/api/passwords/:id', async (req, res) => {
+app.get('/api/passwords/update/:id', async (req, res) => {
   const { id } = req.params;
   const { url, username, password, remarks } = req.body;
 
@@ -64,7 +51,7 @@ app.put('/api/passwords/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/passwords/:id', async (req, res) => {
+app.get('/api/passwords/delete/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -75,8 +62,21 @@ app.delete('/api/passwords/:id', async (req, res) => {
   }
 });
 
+app.post('/api/passwords', async (req, res) => {
+  try {
+    const { url, username, password, remarks } = req.body;
+    const { rows } = await pool.query(
+      'INSERT INTO passwords (user_id, url, username, password, remarks) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [req.user.userId, url, username, password, remarks]
+    );
+    res.status(201).json(rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: 'Error adding password' });
+  }
+});
+
 app.use((req, res) => {
-  res.setHeader('Allow', ['GET', 'POST', 'PUT', 'DELETE']);
+  res.setHeader('Allow', ['GET', 'POST']);
   res.status(405).send(`Method ${req.method} Not Allowed`);
 });
 
