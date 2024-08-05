@@ -111,13 +111,18 @@ export default {
 
     const updatePassword = async () => {
       try {
-        const response = await fetch(`/api/passwords/update/${currentPassword.value.id}`, {
-          method: 'POST',
+        const updatedPasswordData = {
+          ...currentPassword.value,
+          current_id: currentPassword.value.id,
+        };
+
+        const response = await fetch(`/api/passwords`, {
+          method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${localStorage.getItem('token')}`,
           },
-          body: JSON.stringify(currentPassword.value),
+          body: JSON.stringify(updatedPasswordData),
         });
         if (response.ok) {
           const updatedPassword = await response.json();
@@ -134,8 +139,8 @@ export default {
 
     const deletePassword = async (passwordId) => {
       try {
-        const response = await fetch(`/api/passwords/delete/${passwordId}`, {
-          method: 'GET',
+        const response = await fetch(`/api/passwords?id=${passwordId}`, {
+          method: 'DELETE',
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`,
           },
