@@ -1,5 +1,30 @@
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
+const crypto = require('crypto');
+
+// Read encryption key from environment variable
+const encryptionKey = process.env.ENCRYPTION_KEY;
+const algorithm = 'aes-256-cbc';
+
+// Encryption function
+const encrypt = (text) => {
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv(algorithm, Buffer.from(encryptionKey, 'hex'), iv);
+  let encrypted = cipher.update(text);
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  return iv.toString('hex') + ':' + encrypted.toString('hex');
+};
+
+// Decryption function
+const decrypt = (text) => {
+  const textParts = text.split(':');
+  const iv = Buffer.from(textParts.shift(), 'hex');
+  const encryptedText = Buffer.from(textParts.join(':'), 'hex');
+  const decipher = crypto.createDecipheriv(algorithm, Buffer.from(encryptionKey, 'hex'), iv);
+  let decrypted = decipher.update(encryptedText);
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+  return decrypted.toString();
+};
 
 const pool = new Pool({
   connectionString: process.env.POSTGRES_URL,
@@ -29,6 +54,7 @@ module.exports = async (req, res) => {
       case 'GET':
         try {
           const { rows } = await pool.query('SELECT * FROM passwords WHERE user_id = $1', [req.user.userId]);
+          rows.forEach(row => row.password = decrypt(row.password)); // Decrypt passwords
           res.status(200).json(rows);
         } catch (error) {
           res.status(500).json({ error: 'Error fetching passwords' });
@@ -37,9 +63,10 @@ module.exports = async (req, res) => {
       case 'POST':
         try {
           const { url, username, password, remarks } = req.body;
+          const encryptedPassword = encrypt(password); // Encrypt password
           const { rows } = await pool.query(
             'INSERT INTO passwords (user_id, url, username, password, remarks) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-            [req.user.userId, url, username, password, remarks]
+            [req.user.userId, url, username, encryptedPassword, remarks]
           );
           res.status(201).json(rows[0]);
         } catch (error) {
@@ -49,9 +76,10 @@ module.exports = async (req, res) => {
       case 'PUT':
         try {
           const { url, username, password, remarks, current_id } = req.body;
+          const encryptedPassword = encrypt(password); // Encrypt password
           const { rows } = await pool.query(
             'UPDATE passwords SET url = $1, username = $2, password = $3, remarks = $4 WHERE id = $5 AND user_id = $6 RETURNING *',
-            [url, username, password, remarks, current_id, req.user.userId]
+            [url, username, encryptedPassword, remarks, current_id, req.user.userId]
           );
           res.status(200).json(rows[0]);
         } catch (error) {
