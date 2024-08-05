@@ -14,8 +14,8 @@
         <button type="button" @click="generatePassword">生成</button>
       </div>
       <div>
-        <label for="passremark">备注:</label>
-        <input id="passremark" v-model="passremark" required>
+        <label for="remarks">备注:</label>
+        <input id="remarks" v-model="remarks" required>
       </div>
       <button type="submit">添加</button>
     </form>
@@ -59,7 +59,7 @@
         url,
         username,
         password,
-        passremark,
+        remarks,
         addPassword,
         generatePassword
       }
