@@ -12,17 +12,17 @@ const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
-  if (token == null) return res.sendStatus(401);
+  if (token == null) return res.status(401).send('Unauthorized');
 
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) return res.sendStatus(403);
+    if (err) return res.status(403).send('Forbidden');
     req.user = user;
     next();
   });
 };
 
 module.exports = async (req, res) => {
-  await authenticateToken(req, res, async () => {
+  authenticateToken(req, res, async () => {
     const { method } = req;
     const { id } = req.params;
 
@@ -62,14 +62,14 @@ module.exports = async (req, res) => {
       case 'DELETE':
         try {
           await pool.query('DELETE FROM passwords WHERE id = $1 AND user_id = $2', [id, req.user.userId]);
-          res.status(204).end();
+          res.status(204).send();
         } catch (error) {
           res.status(500).json({ error: 'Error deleting password' });
         }
         break;
       default:
         res.setHeader('Allow', ['GET', 'POST', 'PUT', 'DELETE']);
-        res.status(405).end(`Method ${method} Not Allowed`);
+        res.status(405).send(`Method ${method} Not Allowed`);
     }
   });
 };
