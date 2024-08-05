@@ -13,7 +13,7 @@
           @delete-password="deletePassword"
         />
       </div>
-      <div class="sidebar">
+      <div v-if="isSidebarOpen" class="sidebar">
         <password-form @add-password="addPassword" />
         <div class="search-box">
           <input v-model="searchQuery" type="text" placeholder="搜索..." />
@@ -21,6 +21,9 @@
         </div>
       </div>
     </div>
+    <button class="toggle-sidebar" @click="toggleSidebar">
+      {{ isSidebarOpen ? '收起侧边栏' : '展开侧边栏' }}
+    </button>
 
     <!-- Edit Password Modal -->
     <div v-if="isModalOpen" class="modal">
@@ -68,6 +71,7 @@ export default {
     const searchQuery = ref('');
     const isModalOpen = ref(false);
     const currentPassword = ref(null);
+    const isSidebarOpen = ref(true);
     const router = useRouter();
 
     const fetchPasswords = async () => {
@@ -192,6 +196,10 @@ export default {
       currentPassword.value = null;
     };
 
+    const toggleSidebar = () => {
+      isSidebarOpen.value = !isSidebarOpen.value;
+    };
+
     onMounted(fetchPasswords);
 
     return {
@@ -208,6 +216,8 @@ export default {
       currentPassword,
       openEditModal,
       closeModal,
+      isSidebarOpen,
+      toggleSidebar,
     };
   },
 };
@@ -265,7 +275,7 @@ export default {
   width: 300px;
   position: fixed;
   top: 100px; /* adjust based on the height of your header */
-  right: 60px; /* adjust based on your layout */
+  right: 20px; /* adjust based on your layout */
   height: calc(100vh - 120px); /* adjust based on the height of your header and padding */
   background-color: #fff;
   padding: 20px;
@@ -299,6 +309,24 @@ export default {
 }
 
 .search-box button:hover {
+  background-color: #40a9ff;
+}
+
+.toggle-sidebar {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: #1890ff;
+  color: white;
+  border: none;
+  padding: 10px;
+  font-size: 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.toggle-sidebar:hover {
   background-color: #40a9ff;
 }
 
