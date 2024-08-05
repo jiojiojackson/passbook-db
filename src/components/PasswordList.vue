@@ -2,8 +2,9 @@
   <div>
     <div v-for="(password, index) in passwords" :key="password.id" class="password-item">
       <div class="password-info">
-        <div class="password-url">{{ password.url }}</div>
-        <div class="password-username">{{ password.username }}</div>
+        url: <div class="password-url">{{ password.url }}</div>
+        remarks: <div class="password-url">{{ password.remarks }}</div>
+        username: <div class="password-username">{{ password.username }}</div>
         <div v-if="password.visible" class="password-password">{{ password.password }}</div>
       </div>
       <div class="password-actions">
