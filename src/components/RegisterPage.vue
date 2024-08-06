@@ -35,8 +35,6 @@
           if (!response.ok) {
             throw new Error('Registration failed');
           }
-  
-          const data = await response.json();
           alert('Registration successful, please login.');
           router.push('/login');
         } catch (error) {
