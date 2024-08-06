@@ -13,6 +13,7 @@
       <button type="submit">登录</button>
     </form>
     <button @click="goToRegister">注册</button>
+    <button @click="goToChangePassword">修改密码</button>
   </div>
 </template>
 
@@ -54,13 +55,18 @@ export default {
     };
     const goToRegister = async () => {
       router.push('/signup');
-    }
+    };
+
+    const goToChangePassword = async () => {
+      router.push('/email');
+    };
 
     return {
       username,
       password,
       login,
       goToRegister,
+      goToChangePassword
     }
   }
 }
