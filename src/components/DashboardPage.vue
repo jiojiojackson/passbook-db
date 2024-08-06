@@ -2,16 +2,12 @@
   <div class="dashboard-container">
     <header class="dashboard-header">
       <h1>密码管理器</h1>
-      
+
     </header>
     <div class="content-wrapper">
       <div class="main-content">
-        <password-list
-          :passwords="filteredPasswords"
-          @toggle-visibility="togglePasswordVisibility"
-          @edit-password="openEditModal"
-          @delete-password="deletePassword"
-        />
+        <password-list :passwords="filteredPasswords" @toggle-visibility="togglePasswordVisibility"
+          @edit-password="openEditModal" @delete-password="deletePassword" />
       </div>
       <div v-if="isSidebarOpen" class="sidebar">
         <button class="logout-button" @click="logout">登出</button>
@@ -170,20 +166,22 @@ export default {
     };
 
     const searchPasswords = () => {
+      const lowerCaseQuery = searchQuery.value.toLowerCase();
       filteredPasswords.value = passwords.value.filter(
         (pwd) =>
-          pwd.url.includes(searchQuery.value) ||
-          pwd.username.includes(searchQuery.value) ||
-          pwd.remarks.includes(searchQuery.value)
+          pwd.url.toLowerCase().includes(lowerCaseQuery) ||
+          pwd.username.toLowerCase().includes(lowerCaseQuery) ||
+          pwd.remarks.toLowerCase().includes(lowerCaseQuery)
       );
     };
 
     const filteredPasswords = computed(() => {
+      const lowerCaseQuery = searchQuery.value.toLowerCase();
       return passwords.value.filter(
         (pwd) =>
-          pwd.url.includes(searchQuery.value) ||
-          pwd.username.includes(searchQuery.value) ||
-          pwd.remarks.includes(searchQuery.value)
+          pwd.url.toLowerCase().includes(lowerCaseQuery) ||
+          pwd.username.toLowerCase().includes(lowerCaseQuery) ||
+          pwd.remarks.toLowerCase().includes(lowerCaseQuery)
       );
     });
 
@@ -275,9 +273,12 @@ export default {
 .sidebar {
   width: 300px;
   position: fixed;
-  top: 50px; /* adjust based on the height of your header */
-  right: 20px; /* adjust based on your layout */
-  height: calc(100vh - 120px); /* adjust based on the height of your header and padding */
+  top: 50px;
+  /* adjust based on the height of your header */
+  right: 20px;
+  /* adjust based on your layout */
+  height: calc(100vh - 120px);
+  /* adjust based on the height of your header and padding */
   background-color: #fff;
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
