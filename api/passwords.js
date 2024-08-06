@@ -68,6 +68,7 @@ module.exports = async (req, res) => {
             'INSERT INTO passwords (user_id, url, username, password, remarks) VALUES ($1, $2, $3, $4, $5) RETURNING *',
             [req.user.userId, url, username, encryptedPassword, remarks]
           );
+          rows[0].forEach(row => row.password = decrypt(row.password)); // Decrypt passwords
           res.status(201).json(rows[0]);
         } catch (error) {
           res.status(500).json({ error: 'Error adding password' });
@@ -81,6 +82,7 @@ module.exports = async (req, res) => {
             'UPDATE passwords SET url = $1, username = $2, password = $3, remarks = $4 WHERE id = $5 AND user_id = $6 RETURNING *',
             [url, username, encryptedPassword, remarks, current_id, req.user.userId]
           );
+          rows[0].forEach(row => row.password = decrypt(row.password)); // Decrypt passwords
           res.status(200).json(rows[0]);
         } catch (error) {
           res.status(500).json({ error: 'Error updating password' });

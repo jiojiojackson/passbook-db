@@ -12,10 +12,10 @@ cd password-manager
 CREATE TABLE "passwords" (
   "id" SERIAL PRIMARY KEY,
   "user_id" INTEGER,
-  "url" VARCHAR(255),
-  "username" VARCHAR(255),
-  "password" VARCHAR(255),
-  "remarks" VARCHAR(255)
+  "url" TEXT,
+  "username" TEXT,
+  "password" TEXT,
+  "remarks" TEXT
 );
 
 ## passwords
