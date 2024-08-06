@@ -8,7 +8,8 @@
         <div v-if="password.visible" class="password-password">{{ password.password }}</div>
       </div>
       <div class="password-actions">
-        <button @click="() => toggleVisibility(index)">{{ password.visible ? '隐藏' : '显示' }}</button>
+        <!-- <button @click="() => toggleVisibility(index)">{{ password.visible ? '隐藏' : '显示' }}</button> -->
+        <button @click="toggleVisibility(index)">{{ password.visible ? '隐藏' : '显示' }}</button>
         <button @click="() => $emit('edit-password', password)">编辑</button>
         <button @click="requestDelete(password)">删除</button>
       </div>
