@@ -29,15 +29,21 @@
               password: this.newPassword
             })
           });
-  
-          if (!response.ok) {
-            throw new Error('Registration failed');
-          }
-          alert('Registration successful, please login.');
-          this.$router.push('/login');
+          
+          const data = await response.json();
+
+          if (response.ok) {
+            alert(data.message);
+            this.$router.push('/login');
+            } else {
+            alert(data.error);
+            if (response.status === 409) {
+                this.$router.push('/login');
+            }
+            }
         } catch (error) {
-          console.error('Registration error:', error);
-          alert('Error: ' + error.message);
+            console.error('Registration error:', error);
+            alert('An error occurred. Please try again.');
         }
       }
     }
