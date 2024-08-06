@@ -14,7 +14,6 @@
         <password-form @add-password="addPassword" />
         <div class="search-box">
           <input v-model="searchQuery" type="text" placeholder="搜索..." />
-          <button @click="searchPasswords">搜索</button>
         </div>
       </div>
     </div>
@@ -167,15 +166,6 @@ export default {
       router.push('/login');
     };
 
-    const searchPasswords = () => {
-      const lowerCaseQuery = searchQuery.value.toLowerCase();
-      filteredPasswords.value = passwords.value.filter(
-        (pwd) =>
-          pwd.url.toLowerCase().includes(lowerCaseQuery) ||
-          pwd.username.toLowerCase().includes(lowerCaseQuery) ||
-          pwd.remarks.toLowerCase().includes(lowerCaseQuery)
-      );
-    };
 
     const filteredPasswords = computed(() => {
       const lowerCaseQuery = searchQuery.value.toLowerCase();
@@ -211,7 +201,6 @@ export default {
       deletePassword,
       togglePasswordVisibility,
       logout,
-      searchPasswords,
       filteredPasswords,
       isModalOpen,
       currentPassword,
