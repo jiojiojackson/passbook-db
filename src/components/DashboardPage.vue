@@ -275,7 +275,7 @@ export default {
 .sidebar {
   width: 300px;
   position: fixed;
-  top: 100px; /* adjust based on the height of your header */
+  top: 50px; /* adjust based on the height of your header */
   right: 20px; /* adjust based on your layout */
   height: calc(100vh - 120px); /* adjust based on the height of your header and padding */
   background-color: #fff;
