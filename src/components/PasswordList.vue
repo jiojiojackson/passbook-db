@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div v-for="(password, index) in passwords" :key="password.id" class="password-item">
+    <div v-for="password in passwords" :key="password.id" class="password-item">
       <div class="password-info">
         <div class="password-url">{{ password.url }}</div>
         <div class="password-url">remarks: {{ password.remarks }}</div>
