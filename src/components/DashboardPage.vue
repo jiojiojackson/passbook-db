@@ -156,8 +156,9 @@ export default {
       }
     };
 
-    const togglePasswordVisibility = (index) => {
-      console.log('index'+index);
+    const togglePasswordVisibility = (id) => {
+      console.log('id'+id);
+      const index = passwords.value.findIndex((pwd) => pwd.id === id);
       passwords.value[index].visible = !passwords.value[index].visible;
     };
 
