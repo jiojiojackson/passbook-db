@@ -53,7 +53,7 @@ export default {
       }
     };
     const goToRegister = async () => {
-      router.push('/register');
+      router.push('/signup');
     }
 
     return {
