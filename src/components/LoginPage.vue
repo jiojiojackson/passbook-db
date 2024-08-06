@@ -12,6 +12,7 @@
       </div>
       <button type="submit">登录</button>
     </form>
+    <button @click="goToRegister">注册</button>
   </div>
 </template>
 
@@ -50,12 +51,16 @@ export default {
         console.error('登录错误:', error)
         alert('登录过程中发生错误')
       }
+    };
+    const goToRegister = async () => {
+      router.push('/register');
     }
 
     return {
       username,
       password,
       login,
+      goToRegister,
     }
   }
 }
