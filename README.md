@@ -18,4 +18,11 @@ CREATE TABLE "passwords" (
   "remarks" VARCHAR(255)
 );
 
+## passwords
+CREATE TABLE "vericodes" (
+  "id" SERIAL PRIMARY KEY,
+  "username" VARCHAR(255),
+  "vcodes" VARCHAR(255)
+);
+
 
