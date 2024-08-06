@@ -35,7 +35,7 @@ module.exports = async (req, res) => {
         from: process.env.SMTP_EMAIL,
         to: email,
         subject: '验证码',
-        text: `您的验证码是: ${code}`
+        text: `您的验证码是: ${vcodes}`
       };
 
       transporter.sendMail(mailOptions, (error, info) => {
