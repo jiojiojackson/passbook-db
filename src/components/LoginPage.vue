@@ -10,10 +10,12 @@
         <label for="password">密码：</label>
         <input id="password" v-model="password" type="password" required>
       </div>
-      <button type="submit">登录</button>
+      <button type="submit" class="login-button">登录</button>
     </form>
-    <button @click="goToRegister">注册</button>
-    <button @click="goToChangePassword">修改密码</button>
+    <div class="buttons-row">
+      <button @click="goToRegister" class="half-button">注册</button>
+      <button @click="goToChangePassword" class="half-button">修改密码</button>
+    </div>
   </div>
 </template>
 
@@ -96,15 +98,30 @@ input {
 }
 
 button {
-  width: 100%;
   padding: 10px;
-  background-color: #4CAF50;
-  color: white;
   border: none;
   cursor: pointer;
 }
 
 button:hover {
   background-color: #45a049;
+}
+
+.login-button {
+  width: 100%;
+  background-color: #4CAF50;
+  color: white;
+}
+
+.buttons-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.half-button {
+  width: 48%;
+  background-color: grey;
+  color: white;
 }
 </style>
