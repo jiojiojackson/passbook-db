@@ -32,7 +32,7 @@
     methods: {
       async sendVerificationCode() {
         try {
-          const response = await fetch(`/api/email?username=${userName}`, {
+          const response = await fetch(`/api/email?username=${this.userName}`, {
             method: 'GET'
           });
           if (response.ok) {
