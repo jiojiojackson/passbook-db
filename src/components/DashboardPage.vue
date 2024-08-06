@@ -157,7 +157,9 @@ export default {
     };
 
     const togglePasswordVisibility = (index) => {
-      passwords.value[index].visible = !passwords.value[index].visible;
+      console.log('index'+index);
+      const password = this.filteredPasswords[index];
+      this.$set(this.filteredPasswords, index, { ...password, visible: !password.visible });
     };
 
     const logout = () => {
