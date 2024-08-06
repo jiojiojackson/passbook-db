@@ -9,7 +9,6 @@
   </template>
   
   <script>
-  import { useRouter } from 'vue-router'
   export default {
     data() {
       return {
@@ -20,7 +19,6 @@
     methods: {
       async register() {
         try {
-          const router = useRouter()
           const response = await fetch('/api/signup', {
             method: 'POST',
             headers: {
@@ -36,7 +34,7 @@
             throw new Error('Registration failed');
           }
           alert('Registration successful, please login.');
-          router.push('/login');
+          this.$router.push('/login');
         } catch (error) {
           console.error('Registration error:', error);
           alert('Error: ' + error.message);
