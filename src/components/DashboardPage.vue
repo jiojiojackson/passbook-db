@@ -69,7 +69,6 @@ export default {
     const currentPassword = ref(null);
     const isSidebarOpen = ref(true);
     const router = useRouter();
-    let isRefreshed = false; // 变量标记是否是刷新
 
     const fetchPasswords = async () => {
       try {
@@ -192,41 +191,7 @@ export default {
       isSidebarOpen.value = !isSidebarOpen.value;
     };
 
-    // 处理关闭页面
-    const handleUnload = () => {
-      if (!isRefreshed) {
-        console.log("🔴 页面关闭，清除 token");
-        localStorage.removeItem("token");
-        router.push("/login");
-      } else {
-        console.log("🟢 页面刷新，token 保留");
-      }
-    };
-
-    onMounted(() => {
-      fetchPasswords();
-
-      // 监听 beforeunload 事件（关闭页面）
-      window.addEventListener("beforeunload", handleUnload);
-
-      // 监听 visibilitychange（检测页面是否隐藏）
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "hidden") {
-          sessionStorage.setItem("isClosing", "true");
-        }
-      });
-
-      // 标记刷新状态
-      window.addEventListener("load", () => {
-        isRefreshed = sessionStorage.getItem("isClosing") !== "true";
-        sessionStorage.removeItem("isClosing"); // 清除标记
-      });
-    });
-
-    onBeforeUnmount(() => {
-      window.removeEventListener("beforeunload", handleUnload);
-      document.removeEventListener("visibilitychange", () => {});
-    });
+    onMounted(fetchPasswords);
 
     return {
       passwords,
