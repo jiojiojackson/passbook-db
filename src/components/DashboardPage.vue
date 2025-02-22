@@ -192,7 +192,7 @@ export default {
     };
 
     // 处理关闭页面（不包括刷新）
-    const handleUnload = (event) => {
+    const handleUnload = () => {
       const isRefreshed = sessionStorage.getItem("isRefreshed");
 
       // 只有当 isRefreshed 不是 "true" 时，才清除 token 并登出
