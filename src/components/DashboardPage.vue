@@ -191,19 +191,34 @@ export default {
       isSidebarOpen.value = !isSidebarOpen.value;
     };
 
-    // Add window unload handler
-    const handleUnload = () => {
-      localStorage.removeItem('token');
-      router.push('/login');
+    // 处理关闭页面（不包括刷新）
+    const handleUnload = (event) => {
+      const isRefreshed = sessionStorage.getItem("isRefreshed");
+
+      // 只有当 isRefreshed 不是 "true" 时，才清除 token 并登出
+      if (!isRefreshed) {
+        localStorage.removeItem("token");
+      }
     };
 
     onMounted(() => {
       fetchPasswords();
-      window.addEventListener('beforeunload', handleUnload);
+
+      // 在 mounted 时，标记 sessionStorage，表示即将刷新
+      sessionStorage.setItem("isRefreshed", "true");
+
+      // 监听 beforeunload 事件
+      window.addEventListener("beforeunload", handleUnload);
     });
 
     onBeforeUnmount(() => {
-      window.removeEventListener('beforeunload', handleUnload);
+      // 移除监听，防止内存泄漏
+      window.removeEventListener("beforeunload", handleUnload);
+
+      // 页面渲染完成后，删除刷新标记，确保下次刷新有效
+      setTimeout(() => {
+        sessionStorage.removeItem("isRefreshed");
+      }, 100);
     });
 
     return {
