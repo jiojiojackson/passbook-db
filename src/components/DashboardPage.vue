@@ -189,6 +189,22 @@ export default {
       router.push('/login');
     };
 
+    const openEditModal = async (password) => {
+      await refreshToken();
+      currentPassword.value = { ...password };
+      isModalOpen.value = true;
+    };
+
+    const closeModal = async () => {
+      await refreshToken();
+      isModalOpen.value = false;
+      currentPassword.value = null;
+    };
+
+    const toggleSidebar = async () => {
+      await refreshToken();
+      isSidebarOpen.value = !isSidebarOpen.value;
+    };
 
     const filteredPasswords = computed(() => {
       const lowerCaseQuery = searchQuery.value.toLowerCase();
@@ -199,20 +215,6 @@ export default {
           pwd.remarks.toLowerCase().includes(lowerCaseQuery)
       );
     });
-
-    const openEditModal = (password) => {
-      currentPassword.value = { ...password };
-      isModalOpen.value = true;
-    };
-
-    const closeModal = () => {
-      isModalOpen.value = false;
-      currentPassword.value = null;
-    };
-
-    const toggleSidebar = () => {
-      isSidebarOpen.value = !isSidebarOpen.value;
-    };
 
     onMounted(fetchPasswords);
 
