@@ -55,7 +55,7 @@ import { ref, onMounted, computed, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import PasswordList from './PasswordList.vue';
 import PasswordForm from './PasswordForm.vue';
-import { checkTokenExpiration } from '../utils/tokenInterceptor';
+import jwtDecode from 'jwt-decode';
 
 export default {
   name: 'DashboardPage',
@@ -190,6 +190,27 @@ export default {
 
     const toggleSidebar = () => {
       isSidebarOpen.value = !isSidebarOpen.value;
+    };
+
+    // Add token checking functions
+    const isTokenExpired = () => {
+      const token = localStorage.getItem('token');
+      if (!token) return true;
+
+      try {
+        const decodedToken = jwtDecode(token);
+        const currentTime = Date.now() / 1000;
+        return decodedToken.exp < currentTime;
+      } catch {
+        return true;
+      }
+    };
+
+    const checkTokenExpiration = () => {
+      if (isTokenExpired()) {
+        localStorage.removeItem('token');
+        router.push('/login');
+      }
     };
 
     // Add window unload handler
