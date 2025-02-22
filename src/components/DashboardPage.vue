@@ -55,7 +55,6 @@ import { ref, onMounted, computed, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import PasswordList from './PasswordList.vue';
 import PasswordForm from './PasswordForm.vue';
-import jwtDecode from 'jwt-decode';
 
 export default {
   name: 'DashboardPage',
@@ -198,18 +197,13 @@ export default {
       router.push('/login');
     };
 
-    let tokenCheckInterval;
-
     onMounted(() => {
       fetchPasswords();
       window.addEventListener('beforeunload', handleUnload);
-      // Check token expiration every 30 seconds
-      tokenCheckInterval = setInterval(checkTokenExpiration, 30000);
     });
 
     onBeforeUnmount(() => {
       window.removeEventListener('beforeunload', handleUnload);
-      clearInterval(tokenCheckInterval);
     });
 
     return {
