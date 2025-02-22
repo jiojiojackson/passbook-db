@@ -8,6 +8,13 @@ cd password-manager
 ```
 
 # database table
+## users
+CREATE TABLE "users" (
+  "id" SERIAL PRIMARY KEY,
+  "username" VARCHAR(255) UNIQUE NOT NULL,
+  "totp_secret" VARCHAR(255) NOT NULL
+);
+
 ## passwords
 CREATE TABLE "passwords" (
   "id" SERIAL PRIMARY KEY,

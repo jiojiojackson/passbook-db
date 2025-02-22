@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
+const speakeasy = require('speakeasy');
 const { Pool } = require('pg');
 
 const pool = new Pool({
@@ -11,7 +11,7 @@ const pool = new Pool({
 
 module.exports = async (req, res) => {
   if (req.method === 'POST') {
-    const { username, password } = req.body;
+    const { username, token } = req.body;
 
     try {
       const { rows } = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
@@ -21,14 +21,20 @@ module.exports = async (req, res) => {
       }
 
       const user = rows[0];
-      const isMatch = await bcrypt.compare(password, user.password);
+      
+      // Verify TOTP token
+      const verified = speakeasy.totp.verify({
+        secret: user.totp_secret,
+        encoding: 'base32',
+        token: token
+      });
 
-      if (!isMatch) {
-        return res.status(401).json({ error: 'Invalid credentials' });
+      if (!verified) {
+        return res.status(401).json({ error: 'Invalid TOTP token' });
       }
 
-      const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-      res.status(200).json({ token });
+      const jwtToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+      res.status(200).json({ token: jwtToken });
     } catch (error) {
       console.error('Login error:', error);
       res.status(500).json({ error: 'Internal server error' });

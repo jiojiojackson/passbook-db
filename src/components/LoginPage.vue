@@ -7,8 +7,17 @@
         <input id="username" v-model="username" required>
       </div>
       <div>
-        <label for="password">密码：</label>
-        <input id="password" v-model="password" type="password" required>
+        <label for="totp">2FA验证码：</label>
+        <input 
+          id="totp" 
+          v-model="totpToken" 
+          type="text" 
+          maxlength="6" 
+          pattern="[0-9]*" 
+          inputmode="numeric"
+          placeholder="输入6位验证码"
+          required
+        >
       </div>
       <button type="submit" class="login-button">登录</button>
     </form>
@@ -26,7 +35,7 @@ import { useRouter } from 'vue-router'
 export default {
   setup() {
     const username = ref('')
-    const password = ref('')
+    const totpToken = ref('')
     const router = useRouter()
 
     const login = async () => {
@@ -38,34 +47,35 @@ export default {
           },
           body: JSON.stringify({
             username: username.value,
-            password: password.value,
+            token: totpToken.value,
           }),
         })
 
         if (response.ok) {
           const data = await response.json()
-          console.log(data.token)
           localStorage.setItem('token', data.token)
           router.push('/dashboard')
         } else {
-          alert('登录失败，请检查用户名和密码')
+          const error = await response.json()
+          alert(error.error || '登录失败，请检查用户名和验证码')
         }
       } catch (error) {
         console.error('登录错误:', error)
         alert('登录过程中发生错误')
       }
-    };
-    const goToRegister = async () => {
-      router.push('/signup');
-    };
+    }
 
-    const goToChangePassword = async () => {
-      router.push('/email');
-    };
+    const goToRegister = () => {
+      router.push('/signup')
+    }
+
+    const goToChangePassword = () => {
+      router.push('/email')
+    }
 
     return {
       username,
-      password,
+      totpToken,
       login,
       goToRegister,
       goToChangePassword
