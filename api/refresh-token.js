@@ -25,7 +25,7 @@ module.exports = async (req, res) => {
         return res.status(401).json({ error: 'Invalid token' });
       }
 
-      const newToken = jwt.sign({ userId: decoded.userId }, process.env.JWT_SECRET, { expiresIn: '1m' });
+      const newToken = jwt.sign({ userId: decoded.userId }, process.env.JWT_SECRET, { expiresIn: '30m' });
       res.status(200).json({ token: newToken });
     } catch (error) {
       console.error('Token refresh error:', error);
