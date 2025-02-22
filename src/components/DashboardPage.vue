@@ -206,6 +206,32 @@ export default {
       isSidebarOpen.value = !isSidebarOpen.value;
     };
 
+    const checkTokenValidity = async () => {
+      try {
+        const response = await fetch('/api/validate-token', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+        });
+        if (response.status === 401) {
+          router.push('/login');
+        }
+      } catch (error) {
+        console.error('Error validating token:', error);
+        router.push('/login');
+      }
+    };
+
+    const startTokenValidationInterval = () => {
+      setInterval(checkTokenValidity, 30000); // Check every 30 seconds
+    };
+
+    onMounted(() => {
+      fetchPasswords();
+      startTokenValidationInterval();
+    });
+
     const filteredPasswords = computed(() => {
       const lowerCaseQuery = searchQuery.value.toLowerCase();
       return passwords.value.filter(
@@ -215,8 +241,6 @@ export default {
           pwd.remarks.toLowerCase().includes(lowerCaseQuery)
       );
     });
-
-    onMounted(fetchPasswords);
 
     return {
       passwords,
@@ -234,6 +258,8 @@ export default {
       isSidebarOpen,
       toggleSidebar,
       refreshToken,
+      checkTokenValidity,
+      startTokenValidationInterval,
     };
   },
 };
