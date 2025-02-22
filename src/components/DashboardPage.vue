@@ -51,7 +51,7 @@
 </template>
 
 <script>
-import { ref, onMounted, computed, onBeforeUnmount } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import PasswordList from './PasswordList.vue';
 import PasswordForm from './PasswordForm.vue';
