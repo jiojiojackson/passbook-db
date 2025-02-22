@@ -192,33 +192,10 @@ export default {
       isSidebarOpen.value = !isSidebarOpen.value;
     };
 
-    // Add token checking functions
-    const isTokenExpired = () => {
-      const token = localStorage.getItem('token');
-      if (!token) return true;
-
-      try {
-        const decodedToken = jwtDecode(token);
-        // Use the explicit exp timestamp from the token
-        const expTimeInSeconds = decodedToken.exp;
-        const nowInSeconds = Math.floor(Date.now() / 1000);
-        
-        return expTimeInSeconds <= nowInSeconds;
-      } catch {
-        return true;
-      }
-    };
-
-    const checkTokenExpiration = () => {
-      if (isTokenExpired()) {
-        localStorage.removeItem('token');
-        router.push('/login');
-      }
-    };
-
     // Add window unload handler
     const handleUnload = () => {
       localStorage.removeItem('token');
+      router.push('/login');
     };
 
     let tokenCheckInterval;
