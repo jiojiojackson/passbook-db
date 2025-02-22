@@ -199,12 +199,11 @@ export default {
 
       try {
         const decodedToken = jwtDecode(token);
-        // Convert expiration time to milliseconds and create UTC Date
-        const tokenExpDate = new Date(decodedToken.exp * 1000).getTime();
-        // Get current UTC time in milliseconds
-        const currentUTCTime = new Date().getTime();
+        // Use the explicit exp timestamp from the token
+        const expTimeInSeconds = decodedToken.exp;
+        const nowInSeconds = Math.floor(Date.now() / 1000);
         
-        return tokenExpDate <= currentUTCTime;
+        return expTimeInSeconds <= nowInSeconds;
       } catch {
         return true;
       }

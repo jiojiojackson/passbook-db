@@ -33,8 +33,23 @@ module.exports = async (req, res) => {
         return res.status(401).json({ error: 'Invalid TOTP token' });
       }
 
-      // Changed expiration time to 5 minutes
-      const jwtToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+      // Get current time in UTC seconds
+      const nowInSeconds = Math.floor(Date.now() / 1000);
+      
+      // Create JWT with explicit UTC timestamps
+      const jwtToken = jwt.sign(
+        {
+          userId: user.id,
+          iat: nowInSeconds,
+          exp: nowInSeconds + (5 * 60), // 5 minutes from now in seconds
+        }, 
+        process.env.JWT_SECRET,
+        { 
+          // Don't auto-generate timestamps since we're setting them explicitly
+          noTimestamp: true 
+        }
+      );
+      
       res.status(200).json({ token: jwtToken });
     } catch (error) {
       console.error('Login error:', error);
