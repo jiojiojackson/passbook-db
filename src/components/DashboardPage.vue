@@ -227,7 +227,8 @@ export default {
       setInterval(checkTokenValidity, 30000); // Check every 30 seconds
     };
 
-    onMounted(() => {
+    onMounted(async () => {
+      await refreshToken();
       fetchPasswords();
       startTokenValidationInterval();
     });
