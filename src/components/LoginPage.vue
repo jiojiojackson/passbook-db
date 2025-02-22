@@ -23,7 +23,6 @@
     </form>
     <div class="buttons-row">
       <button @click="goToRegister" class="half-button">注册</button>
-      <button @click="goToChangePassword" class="half-button">修改密码</button>
     </div>
   </div>
 </template>
@@ -69,16 +68,12 @@ export default {
       router.push('/signup')
     }
 
-    const goToChangePassword = () => {
-      router.push('/email')
-    }
 
     return {
       username,
       totpToken,
       login,
-      goToRegister,
-      goToChangePassword
+      goToRegister
     }
   }
 }
@@ -130,8 +125,8 @@ button:hover {
 }
 
 .half-button {
-  width: 48%;
-  background-color: grey;
+  width: 100%;
+  background-color: rgb(38, 57, 232);
   color: white;
 }
 </style>
