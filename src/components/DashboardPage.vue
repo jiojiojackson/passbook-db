@@ -88,7 +88,27 @@ export default {
       }
     };
 
+    const refreshToken = async () => {
+      try {
+        const response = await fetch('/api/refresh-token', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          localStorage.setItem('token', data.token);
+        } else if (response.status === 401) {
+          router.push('/login');
+        }
+      } catch (error) {
+        console.error('Error refreshing token:', error);
+      }
+    };
+
     const addPassword = async (newPassword) => {
+      await refreshToken();
       try {
         const response = await fetch('/api/passwords', {
           method: 'POST',
@@ -110,6 +130,7 @@ export default {
     };
 
     const updatePassword = async () => {
+      await refreshToken();
       try {
         const updatedPasswordData = {
           ...currentPassword.value,
@@ -138,6 +159,7 @@ export default {
     };
 
     const deletePassword = async (passwordId) => {
+      await refreshToken();
       try {
         const response = await fetch(`/api/passwords?id=${passwordId}`, {
           method: 'DELETE',
@@ -155,7 +177,8 @@ export default {
       }
     };
 
-    const togglePasswordVisibility = (id) => {
+    const togglePasswordVisibility = async (id) => {
+      await refreshToken();
       console.log('id'+id);
       const index = passwords.value.findIndex((pwd) => pwd.id === id);
       passwords.value[index].visible = !passwords.value[index].visible;
@@ -208,6 +231,7 @@ export default {
       closeModal,
       isSidebarOpen,
       toggleSidebar,
+      refreshToken,
     };
   },
 };
