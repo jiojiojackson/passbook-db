@@ -51,7 +51,7 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import PasswordList from './PasswordList.vue';
 import PasswordForm from './PasswordForm.vue';
@@ -191,7 +191,19 @@ export default {
       isSidebarOpen.value = !isSidebarOpen.value;
     };
 
-    onMounted(fetchPasswords);
+    // Add window unload handler
+    const handleUnload = () => {
+      localStorage.removeItem('token');
+    };
+
+    onMounted(() => {
+      fetchPasswords();
+      window.addEventListener('beforeunload', handleUnload);
+    });
+
+    onBeforeUnmount(() => {
+      window.removeEventListener('beforeunload', handleUnload);
+    });
 
     return {
       passwords,

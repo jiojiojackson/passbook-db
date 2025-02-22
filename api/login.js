@@ -33,7 +33,8 @@ module.exports = async (req, res) => {
         return res.status(401).json({ error: 'Invalid TOTP token' });
       }
 
-      const jwtToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+      // Changed expiration time to 5 minutes
+      const jwtToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
       res.status(200).json({ token: jwtToken });
     } catch (error) {
       console.error('Login error:', error);
