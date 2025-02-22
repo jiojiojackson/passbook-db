@@ -228,6 +228,7 @@ export default {
     };
 
     onMounted(async () => {
+      await checkTokenValidity();
       await refreshToken();
       fetchPasswords();
       startTokenValidationInterval();
