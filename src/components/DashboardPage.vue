@@ -69,6 +69,7 @@ export default {
     const currentPassword = ref(null);
     const isSidebarOpen = ref(true);
     const router = useRouter();
+    let isRefreshed = false; // 变量标记是否是刷新
 
     const fetchPasswords = async () => {
       try {
@@ -191,34 +192,40 @@ export default {
       isSidebarOpen.value = !isSidebarOpen.value;
     };
 
-    // 处理关闭页面（不包括刷新）
+    // 处理关闭页面
     const handleUnload = () => {
-      const isRefreshed = sessionStorage.getItem("isRefreshed");
-
-      // 只有当 isRefreshed 不是 "true" 时，才清除 token 并登出
       if (!isRefreshed) {
+        console.log("🔴 页面关闭，清除 token");
         localStorage.removeItem("token");
+        router.push("/login");
+      } else {
+        console.log("🟢 页面刷新，token 保留");
       }
     };
 
     onMounted(() => {
       fetchPasswords();
 
-      // 在 mounted 时，标记 sessionStorage，表示即将刷新
-      sessionStorage.setItem("isRefreshed", "true");
-
-      // 监听 beforeunload 事件
+      // 监听 beforeunload 事件（关闭页面）
       window.addEventListener("beforeunload", handleUnload);
+
+      // 监听 visibilitychange（检测页面是否隐藏）
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") {
+          sessionStorage.setItem("isClosing", "true");
+        }
+      });
+
+      // 标记刷新状态
+      window.addEventListener("load", () => {
+        isRefreshed = sessionStorage.getItem("isClosing") !== "true";
+        sessionStorage.removeItem("isClosing"); // 清除标记
+      });
     });
 
     onBeforeUnmount(() => {
-      // 移除监听，防止内存泄漏
       window.removeEventListener("beforeunload", handleUnload);
-
-      // 页面渲染完成后，删除刷新标记，确保下次刷新有效
-      setTimeout(() => {
-        sessionStorage.removeItem("isRefreshed");
-      }, 100);
+      document.removeEventListener("visibilitychange", () => {});
     });
 
     return {
