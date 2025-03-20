@@ -34,11 +34,32 @@
             </p>
           </div>
           <password-list 
-            :passwords="filteredPasswords" 
+            :passwords="paginatedPasswords" 
             @toggle-visibility="togglePasswordVisibility"
             @edit-password="openEditModal" 
             @delete-password="deletePassword" 
           />
+          
+          <!-- Pagination Controls -->
+          <div v-if="filteredPasswords.length > pageSize" class="pagination-controls">
+            <button 
+              class="pagination-btn" 
+              :disabled="currentPage === 1" 
+              @click="prevPage"
+            >
+              上一页
+            </button>
+            <div class="pagination-info">
+              第 {{ currentPage }} 页，共 {{ totalPages }} 页
+            </div>
+            <button 
+              class="pagination-btn" 
+              :disabled="currentPage === totalPages" 
+              @click="nextPage"
+            >
+              下一页
+            </button>
+          </div>
         </main>
 
         <aside class="sidebar" :class="{ 'open': isSidebarOpen }">
@@ -93,7 +114,7 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watchEffect } from 'vue';
 import { useRouter } from 'vue-router';
 import PasswordList from './PasswordList.vue';
 import PasswordForm from './PasswordForm.vue';
@@ -112,6 +133,10 @@ export default {
     const isSidebarOpen = ref(true);
     const router = useRouter();
     const lastRefreshTime = ref(null);
+    
+    // Pagination state
+    const currentPage = ref(1);
+    const pageSize = ref(5);
 
     const fetchPasswords = async () => {
       try {
@@ -301,6 +326,42 @@ export default {
           pwd.remarks.toLowerCase().includes(lowerCaseQuery)
       );
     });
+    
+    // Computed for total pages
+    const totalPages = computed(() => {
+      return Math.ceil(filteredPasswords.value.length / pageSize.value);
+    });
+    
+    // Computed for paginated passwords
+    const paginatedPasswords = computed(() => {
+      const startIndex = (currentPage.value - 1) * pageSize.value;
+      const endIndex = startIndex + pageSize.value;
+      return filteredPasswords.value.slice(startIndex, endIndex);
+    });
+    
+    // Reset to first page when filtering changes
+    const resetPagination = () => {
+      currentPage.value = 1;
+    };
+    
+    // Watch for changes in searchQuery
+    watchEffect(() => {
+      searchQuery.value; // Access the ref to track changes
+      resetPagination();
+    });
+    
+    // Pagination navigation
+    const nextPage = () => {
+      if (currentPage.value < totalPages.value) {
+        currentPage.value++;
+      }
+    };
+    
+    const prevPage = () => {
+      if (currentPage.value > 1) {
+        currentPage.value--;
+      }
+    };
 
     return {
       passwords,
@@ -321,6 +382,13 @@ export default {
       checkTokenValidity,
       startTokenValidationInterval,
       lastRefreshTime,
+      // Pagination
+      currentPage,
+      pageSize,
+      totalPages,
+      paginatedPasswords,
+      nextPage,
+      prevPage,
     };
   },
 };
@@ -625,6 +693,39 @@ export default {
 .modal-enter-from,
 .modal-leave-to {
   opacity: 0;
+}
+
+/* Pagination Styles */
+.pagination-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 2rem;
+  gap: 1rem;
+}
+
+.pagination-btn {
+  padding: 0.5rem 1rem;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background-color: var(--secondary-color);
+}
+
+.pagination-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  font-size: 0.9rem;
+  color: #666;
 }
 
 /* Media Queries */
