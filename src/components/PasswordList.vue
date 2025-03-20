@@ -89,6 +89,8 @@
 </template>
 
 <script>
+import { reactive } from 'vue';
+
 export default {
   props: {
     passwords: {
@@ -100,7 +102,7 @@ export default {
     return {
       showDeleteModal: false,
       passwordToDelete: null,
-      copyStatus: {}
+      copyStatus: reactive({})
     };
   },
   methods: {
@@ -122,16 +124,15 @@ export default {
     },
     copyToClipboard(text, id) {
       navigator.clipboard.writeText(text).then(() => {
-        // Use Vue.set to ensure reactivity
-        this.$set(this.copyStatus, id, true);
+        // Direct assignment in Vue 3 is reactive
+        this.copyStatus[id] = true;
         
-        // Reset after 1.5 seconds (increased from 0.5 for better visibility)
+        // Reset after 1.5 seconds
         setTimeout(() => {
-          this.$set(this.copyStatus, id, false);
+          this.copyStatus[id] = false;
         }, 1500);
       }).catch(err => {
         console.error('Could not copy text: ', err);
-        // Show error state to user
         alert('复制失败，请重试');
       });
     }
