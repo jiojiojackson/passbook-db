@@ -14,6 +14,7 @@
               class="form-input"
               autocomplete="username"
               required
+              @keyup.enter="$event.target.form.querySelector('#totp').focus()"
             >
           </div>
           <div class="form-group">
@@ -30,6 +31,7 @@
                 class="form-input totp-input"
                 autocomplete="one-time-code"
                 required
+                @keyup.enter="loginBtnRef.click()"
               >
               <div class="totp-dots">
                 <span v-for="(digit, index) in 6" :key="index" 
@@ -38,7 +40,10 @@
               </div>
             </div>
           </div>
-          <button type="submit" class="btn-primary login-button">
+          <button 
+            type="submit" 
+            class="btn-primary login-button"
+            ref="loginBtnRef">
             <span>登录</span>
           </button>
         </form>
@@ -59,6 +64,7 @@ export default {
     const username = ref('')
     const totpToken = ref('')
     const router = useRouter()
+    const loginBtnRef = ref(null)
 
     const login = async () => {
       try {
@@ -95,7 +101,8 @@ export default {
       username,
       totpToken,
       login,
-      goToRegister
+      goToRegister,
+      loginBtnRef
     }
   }
 }
