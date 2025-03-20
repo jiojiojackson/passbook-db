@@ -39,7 +39,7 @@
             <span class="detail-label">用户名</span>
             <span class="detail-value" @click="copyToClipboard(password.username, 'username-' + password.id)">
               {{ password.username }} 
-              <span class="copy-hint" v-if="copyStatus['username-' + password.id]">已复制</span>
+              <span class="copy-hint" :class="{ 'copy-hint-visible': copyStatus['username-' + password.id] }" v-if="copyStatus['username-' + password.id]">已复制</span>
               <span class="copy-hint" v-else>点击复制</span>
             </span>
           </div>
@@ -51,7 +51,7 @@
               @click="password.visible && copyToClipboard(password.password, 'password-' + password.id)"
             >
               <span v-if="password.visible">{{ password.password }} 
-                <span class="copy-hint" v-if="copyStatus['password-' + password.id]">已复制</span>
+                <span class="copy-hint" :class="{ 'copy-hint-visible': copyStatus['password-' + password.id] }" v-if="copyStatus['password-' + password.id]">已复制</span>
                 <span class="copy-hint" v-else>点击复制</span>
               </span>
               <span v-else>••••••••</span>
@@ -271,10 +271,6 @@ export default {
   background-color: #e8e8e8;
 }
 
-.detail-value:hover .copy-hint {
-  opacity: 1;
-}
-
 .copy-hint {
   font-size: 0.7rem;
   color: var(--primary-color);
@@ -284,6 +280,14 @@ export default {
   transform: translateY(-50%);
   opacity: 0;
   transition: opacity 0.2s ease;
+}
+
+.copy-hint-visible {
+  opacity: 1 !important;
+}
+
+.detail-value:hover .copy-hint {
+  opacity: 1;
 }
 
 .password-value {
