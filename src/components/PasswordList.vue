@@ -37,8 +37,10 @@
         <div class="password-details">
           <div class="detail-row">
             <span class="detail-label">用户名</span>
-            <span class="detail-value" @click="copyToClipboard(password.username)">
-              {{ password.username }} <span class="copy-hint">点击复制</span>
+            <span class="detail-value" @click="copyToClipboard(password.username, 'username-' + password.id)">
+              {{ password.username }} 
+              <span class="copy-hint" v-if="copyStatus['username-' + password.id]">已复制</span>
+              <span class="copy-hint" v-else>点击复制</span>
             </span>
           </div>
           
@@ -46,9 +48,12 @@
             <span class="detail-label">密码</span>
             <span 
               class="detail-value password-value" 
-              @click="password.visible && copyToClipboard(password.password)"
+              @click="password.visible && copyToClipboard(password.password, 'password-' + password.id)"
             >
-              <span v-if="password.visible">{{ password.password }} <span class="copy-hint">点击复制</span></span>
+              <span v-if="password.visible">{{ password.password }} 
+                <span class="copy-hint" v-if="copyStatus['password-' + password.id]">已复制</span>
+                <span class="copy-hint" v-else>点击复制</span>
+              </span>
               <span v-else>••••••••</span>
             </span>
           </div>
@@ -95,7 +100,7 @@ export default {
     return {
       showDeleteModal: false,
       passwordToDelete: null,
-      copyNotification: false
+      copyStatus: {}
     };
   },
   methods: {
@@ -115,9 +120,15 @@ export default {
       this.passwordToDelete = null;
       this.showDeleteModal = false;
     },
-    copyToClipboard(text) {
+    copyToClipboard(text, id) {
       navigator.clipboard.writeText(text).then(() => {
-        // Show a toast or notification here if desired
+        // Set copied status for this specific item
+        this.$set(this.copyStatus, id, true);
+        
+        // Reset after 0.5 seconds
+        setTimeout(() => {
+          this.$set(this.copyStatus, id, false);
+        }, 500);
       }).catch(err => {
         console.error('Could not copy text: ', err);
       });
