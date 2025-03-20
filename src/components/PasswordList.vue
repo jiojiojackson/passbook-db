@@ -122,15 +122,17 @@ export default {
     },
     copyToClipboard(text, id) {
       navigator.clipboard.writeText(text).then(() => {
-        // Set copied status for this specific item
+        // Use Vue.set to ensure reactivity
         this.$set(this.copyStatus, id, true);
         
-        // Reset after 0.5 seconds
+        // Reset after 1.5 seconds (increased from 0.5 for better visibility)
         setTimeout(() => {
           this.$set(this.copyStatus, id, false);
-        }, 500);
+        }, 1500);
       }).catch(err => {
         console.error('Could not copy text: ', err);
+        // Show error state to user
+        alert('复制失败，请重试');
       });
     }
   }
@@ -279,11 +281,16 @@ export default {
   top: 50%;
   transform: translateY(-50%);
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.3s ease;
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 2px 6px;
+  border-radius: 4px;
+  pointer-events: none;
 }
 
 .copy-hint-visible {
   opacity: 1 !important;
+  z-index: 1;
 }
 
 .detail-value:hover .copy-hint {
