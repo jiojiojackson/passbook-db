@@ -1,52 +1,94 @@
 <template>
   <div class="dashboard-container">
-    <header class="dashboard-header">
-      <h1>密码管理器</h1>
-
-    </header>
-    <div class="content-wrapper">
-      <div class="main-content">
-        <password-list :passwords="filteredPasswords" @toggle-visibility="togglePasswordVisibility"
-          @edit-password="openEditModal" @delete-password="deletePassword" />
-      </div>
-      <div v-if="isSidebarOpen" class="sidebar">
-        <button class="logout-button" @click="logout">登出</button>
-        <password-form @add-password="addPassword" />
-        <div class="search-box">
-          <input v-model="searchQuery" type="text" placeholder="搜索..." />
+    <div class="dashboard-layout" :class="{ 'sidebar-open': isSidebarOpen }">
+      <header class="dashboard-header">
+        <div class="header-content">
+          <h1 class="app-title">
+            <span class="icon">🔐</span>
+            密码管理器
+          </h1>
+          <div class="header-actions">
+            <div class="search-container">
+              <input 
+                v-model="searchQuery" 
+                type="text" 
+                placeholder="搜索密码..." 
+                class="search-input"
+              />
+              <span class="search-icon">🔍</span>
+            </div>
+            <button class="toggle-sidebar-btn" @click="toggleSidebar">
+              <span v-if="isSidebarOpen">收起</span>
+              <span v-else>展开</span>
+            </button>
+          </div>
         </div>
+      </header>
+
+      <div class="content-wrapper">
+        <main class="main-content">
+          <div class="passwords-header">
+            <h2>您的密码 ({{ filteredPasswords.length }})</h2>
+            <p v-if="filteredPasswords.length === 0 && searchQuery" class="no-results">
+              没有找到匹配 "{{ searchQuery }}" 的结果
+            </p>
+          </div>
+          <password-list 
+            :passwords="filteredPasswords" 
+            @toggle-visibility="togglePasswordVisibility"
+            @edit-password="openEditModal" 
+            @delete-password="deletePassword" 
+          />
+        </main>
+
+        <aside class="sidebar" :class="{ 'open': isSidebarOpen }">
+          <div class="sidebar-header">
+            <h2>添加新密码</h2>
+          </div>
+          <password-form @add-password="addPassword" />
+          <div class="sidebar-footer">
+            <button class="logout-button" @click="logout">
+              <span class="icon">🚪</span>
+              <span>登出</span>
+            </button>
+          </div>
+        </aside>
       </div>
     </div>
-    <button class="toggle-sidebar" @click="toggleSidebar">
-      {{ isSidebarOpen ? '收起侧边栏' : '展开侧边栏' }}
-    </button>
 
     <!-- Edit Password Modal -->
-    <div v-if="isModalOpen" class="modal">
-      <div class="modal-content">
-        <span class="close" @click="closeModal">&times;</span>
-        <h2>编辑密码</h2>
-        <form @submit.prevent="updatePassword">
-          <div class="form-group">
-            <label for="url">URL:</label>
-            <input v-model="currentPassword.url" id="url" type="text" required />
+    <transition name="modal">
+      <div v-if="isModalOpen" class="modal-overlay" @click.self="closeModal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>编辑密码</h2>
+            <button class="close-button" @click="closeModal">&times;</button>
           </div>
-          <div class="form-group">
-            <label for="username">用户名:</label>
-            <input v-model="currentPassword.username" id="username" type="text" required />
-          </div>
-          <div class="form-group">
-            <label for="password">密码:</label>
-            <input v-model="currentPassword.password" id="password" type="text" required />
-          </div>
-          <div class="form-group">
-            <label for="remarks">备注:</label>
-            <input v-model="currentPassword.remarks" id="remarks" type="text" />
-          </div>
-          <button type="submit">保存</button>
-        </form>
+          <form @submit.prevent="updatePassword" class="edit-password-form">
+            <div class="form-group">
+              <label for="url">URL</label>
+              <input v-model="currentPassword.url" id="url" type="text" class="form-input" required />
+            </div>
+            <div class="form-group">
+              <label for="username">用户名</label>
+              <input v-model="currentPassword.username" id="username" type="text" class="form-input" required />
+            </div>
+            <div class="form-group">
+              <label for="password">密码</label>
+              <input v-model="currentPassword.password" id="password" type="text" class="form-input" required />
+            </div>
+            <div class="form-group">
+              <label for="remarks">备注</label>
+              <input v-model="currentPassword.remarks" id="remarks" type="text" class="form-input" />
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn-secondary" @click="closeModal">取消</button>
+              <button type="submit" class="btn-primary">保存</button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
+    </transition>
   </div>
 </template>
 
@@ -179,7 +221,6 @@ export default {
 
     const togglePasswordVisibility = async (id) => {
       await refreshToken();
-      console.log('id'+id);
       const index = passwords.value.findIndex((pwd) => pwd.id === id);
       passwords.value[index].visible = !passwords.value[index].visible;
     };
@@ -269,115 +310,187 @@ export default {
 
 <style scoped>
 .dashboard-container {
+  min-height: 100vh;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+.dashboard-layout {
   display: flex;
   flex-direction: column;
-  padding: 20px;
-  font-family: 'Arial, sans-serif';
-  background-color: #f0f2f5;
-  color: #333;
   min-height: 100vh;
+  transition: all 0.3s ease;
 }
 
 .dashboard-header {
+  background-color: var(--card-bg);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  padding: 1rem 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.header-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
 }
 
-.dashboard-header h1 {
-  font-size: 24px;
-  font-weight: 600;
+.app-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
   margin: 0;
 }
 
-.logout-button {
-  background-color: #ff4d4f;
-  color: #fff;
-  border: none;
-  padding: 8px 16px;
-  cursor: pointer;
-  border-radius: 4px;
-  font-size: 14px;
-  transition: background-color 0.3s;
+.app-title .icon {
+  font-size: 1.3em;
+  margin-right: 0.5rem;
 }
 
-.logout-button:hover {
-  background-color: #ff7875;
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.search-container {
+  position: relative;
+  width: 250px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.6rem 1rem 0.6rem 2.5rem;
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.search-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+}
+
+.search-icon {
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  transform: translateY(-50%);
+  font-size: 0.9rem;
+  color: #999;
+}
+
+.toggle-sidebar-btn {
+  background-color: transparent;
+  color: var(--primary-color);
+  font-size: 0.9rem;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  border: 1px solid var(--primary-color);
+  transition: all 0.2s ease;
+}
+
+.toggle-sidebar-btn:hover {
+  background-color: var(--primary-color);
+  color: white;
 }
 
 .content-wrapper {
   display: flex;
-  gap: 20px;
+  flex: 1;
+  position: relative;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .main-content {
   flex: 1;
+  padding: 2rem;
+  transition: all 0.3s ease;
+}
+
+.passwords-header {
+  margin-bottom: 1.5rem;
+}
+
+.passwords-header h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.no-results {
+  color: #666;
+  font-style: italic;
 }
 
 .sidebar {
-  width: 300px;
+  width: 350px;
+  background-color: var(--card-bg);
+  border-left: 1px solid var(--border-color);
+  padding: 2rem;
+  height: calc(100vh - 70px);
   position: fixed;
-  top: 50px;
-  /* adjust based on the height of your header */
-  right: 20px;
-  /* adjust based on your layout */
-  height: calc(100vh - 120px);
-  /* adjust based on the height of your header and padding */
-  background-color: #fff;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  top: 70px;
+  right: 0;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  overflow-y: auto;
+  z-index: 5;
+  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.05);
+}
+
+.sidebar.open {
+  transform: translateX(0);
+}
+
+.sidebar-header {
+  margin-bottom: 1.5rem;
+}
+
+.sidebar-header h2 {
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.sidebar-footer {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.logout-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.75rem;
+  background-color: var(--danger-color);
+  color: white;
   border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
 }
 
-.search-box {
-  margin-top: 20px;
+.logout-button:hover {
+  background-color: #e5136c;
+  transform: translateY(-2px);
 }
 
-.search-box input {
-  width: 100%;
-  padding: 10px;
-  font-size: 14px;
-  margin-bottom: 10px;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
+.logout-button .icon {
+  margin-right: 0.5rem;
 }
 
-.search-box button {
-  width: 100%;
-  padding: 10px;
-  font-size: 14px;
-  background-color: #1890ff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.search-box button:hover {
-  background-color: #40a9ff;
-}
-
-.toggle-sidebar {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  background-color: #1890ff;
-  color: white;
-  border: none;
-  padding: 10px;
-  font-size: 14px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.toggle-sidebar:hover {
-  background-color: #40a9ff;
-}
-
-.modal {
+.modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -387,54 +500,138 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
+  z-index: 20;
 }
 
 .modal-content {
   background: white;
-  padding: 20px;
-  border-radius: 4px;
-  width: 400px;
-  position: relative;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
 }
 
-.close {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  font-size: 20px;
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h2 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.close-button {
+  background: transparent;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: #666;
   cursor: pointer;
+  border: none;
+}
+
+.edit-password-form {
+  padding: 1.5rem;
 }
 
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: 1.25rem;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #555;
 }
 
-.form-group input {
+.form-input {
   width: 100%;
-  padding: 10px;
-  font-size: 14px;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
+  padding: 12px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.2s ease;
 }
 
-button[type="submit"] {
-  width: 100%;
-  padding: 10px;
-  font-size: 14px;
-  background-color: #1890ff;
+.form-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.btn-primary {
+  padding: 0.7rem 1.5rem;
+  background-color: var(--primary-color);
   color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s;
+  font-weight: 500;
+  border-radius: 6px;
+  transition: all 0.2s ease;
 }
 
-button[type="submit"]:hover {
-  background-color: #40a9ff;
+.btn-primary:hover {
+  background-color: var(--secondary-color);
+}
+
+.btn-secondary {
+  padding: 0.7rem 1.5rem;
+  background-color: #f1f1f1;
+  color: #666;
+  font-weight: 500;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background-color: #e5e5e5;
+}
+
+/* Modal transitions */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+/* Media Queries */
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .search-container {
+    width: 100%;
+  }
+
+  .sidebar {
+    width: 100%;
+  }
+
+  .main-content {
+    padding: 1rem;
+  }
 }
 </style>

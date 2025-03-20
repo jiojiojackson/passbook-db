@@ -1,28 +1,85 @@
 <template>
-  <div>
-    <div v-for="password in passwords" :key="password.id" class="password-item">
-      <div class="password-info">
-        <div class="password-url">{{ password.url }}</div>
-        <div class="password-url">remarks: {{ password.remarks }}</div>
-        <div class="password-username">username: {{ password.username }}</div>
-        <div v-if="password.visible" class="password-password">{{ password.password }}</div>
-      </div>
-      <div class="password-actions">
-        <button @click="() => $emit('toggle-visibility', password.id)">{{ password.visible ? '隐藏' : '显示' }}</button>
-        <button @click="() => $emit('edit-password', password)">编辑</button>
-        <button @click="requestDelete(password)">删除</button>
-      </div>
+  <div class="password-list">
+    <div v-if="passwords.length === 0" class="empty-state">
+      <div class="empty-icon">🔍</div>
+      <p>您还没有保存任何密码</p>
     </div>
+    
+    <transition-group name="password-item" tag="div">
+      <div v-for="password in passwords" :key="password.id" class="password-card">
+        <div class="password-header">
+          <div class="password-url">{{ password.url }}</div>
+          <div class="password-actions">
+            <button 
+              class="action-button view-button" 
+              @click="() => $emit('toggle-visibility', password.id)"
+              :title="password.visible ? '隐藏密码' : '显示密码'"
+            >
+              <span class="icon">{{ password.visible ? '👁️' : '👁️‍🗨️' }}</span>
+            </button>
+            <button 
+              class="action-button edit-button" 
+              @click="() => $emit('edit-password', password)"
+              title="编辑"
+            >
+              <span class="icon">✏️</span>
+            </button>
+            <button 
+              class="action-button delete-button" 
+              @click="requestDelete(password)"
+              title="删除"
+            >
+              <span class="icon">🗑️</span>
+            </button>
+          </div>
+        </div>
+        
+        <div class="password-details">
+          <div class="detail-row">
+            <span class="detail-label">用户名</span>
+            <span class="detail-value" @click="copyToClipboard(password.username)">
+              {{ password.username }} <span class="copy-hint">点击复制</span>
+            </span>
+          </div>
+          
+          <div class="detail-row">
+            <span class="detail-label">密码</span>
+            <span 
+              class="detail-value password-value" 
+              @click="password.visible && copyToClipboard(password.password)"
+            >
+              <span v-if="password.visible">{{ password.password }} <span class="copy-hint">点击复制</span></span>
+              <span v-else>••••••••</span>
+            </span>
+          </div>
+          
+          <div v-if="password.remarks" class="detail-row">
+            <span class="detail-label">备注</span>
+            <span class="detail-value remarks">{{ password.remarks }}</span>
+          </div>
+        </div>
+      </div>
+    </transition-group>
 
-    <!-- Modal for delete confirmation -->
-    <div v-if="showDeleteModal" class="modal">
-      <div class="modal-content">
-        <h3>确认删除</h3>
-        <p>您确定要删除此密码吗？</p>
-        <button @click="confirmDelete">确认删除</button>
-        <button @click="cancelDelete">放弃删除</button>
+    <!-- Delete Confirmation Modal -->
+    <transition name="modal">
+      <div v-if="showDeleteModal" class="modal-overlay" @click.self="cancelDelete">
+        <div class="delete-modal">
+          <div class="modal-header">
+            <h3>确认删除</h3>
+            <button class="close-button" @click="cancelDelete">&times;</button>
+          </div>
+          <div class="modal-body">
+            <p>您确定要删除 <strong>{{ passwordToDelete?.url }}</strong> 的密码吗？</p>
+            <p class="warning">此操作无法撤销！</p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-secondary" @click="cancelDelete">取消</button>
+            <button class="btn-danger" @click="confirmDelete">删除</button>
+          </div>
+        </div>
       </div>
-    </div>
+    </transition>
   </div>
 </template>
 
@@ -38,6 +95,7 @@ export default {
     return {
       showDeleteModal: false,
       passwordToDelete: null,
+      copyNotification: false
     };
   },
   methods: {
@@ -57,59 +115,195 @@ export default {
       this.passwordToDelete = null;
       this.showDeleteModal = false;
     },
+    copyToClipboard(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        // Show a toast or notification here if desired
+      }).catch(err => {
+        console.error('Could not copy text: ', err);
+      });
+    }
   }
 }
 </script>
 
 <style scoped>
-.password-item {
+.password-list {
+  position: relative;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  background-color: var(--card-bg);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  color: #aaa;
+}
+
+.empty-state p {
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.password-card {
+  background-color: var(--card-bg);
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  margin-bottom: 1rem;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.password-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.password-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px;
-  border: 1px solid #d9d9d9;
-  margin-bottom: 10px;
-  border-radius: 4px;
-  background: #fff;
-}
-
-.password-info {
-  flex: 1;
+  padding: 1rem 1.25rem;
+  background-color: var(--primary-color);
+  color: white;
 }
 
 .password-url {
-  font-weight: bold;
+  font-weight: 600;
+  font-size: 1.1rem;
+  max-width: 70%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.password-username, .password-password {
-  color: #666;
+.password-actions {
+  display: flex;
+  gap: 0.5rem;
 }
 
-.password-actions button {
-  margin-left: 10px;
-  padding: 5px 10px;
-  background-color: #1890ff;
-  color: #fff;
+.action-button {
+  background: rgba(255, 255, 255, 0.2);
   border: none;
-  border-radius: 4px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: all 0.2s ease;
 }
 
-.password-actions button:hover {
-  background-color: #40a9ff;
+.action-button:hover {
+  background: rgba(255, 255, 255, 0.4);
+  transform: scale(1.1);
 }
 
-.password-actions button:nth-child(3) {
-  background-color: #ff4d4f;
+.view-button {
+  background: rgba(255, 255, 255, 0.2);
 }
 
-.password-actions button:nth-child(3):hover {
-  background-color: #ff7875;
+.edit-button {
+  background: rgba(255, 255, 255, 0.2);
 }
 
-/* Styles for the modal */
-.modal {
+.delete-button {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.icon {
+  font-size: 1rem;
+}
+
+.password-details {
+  padding: 1.25rem;
+}
+
+.detail-row {
+  display: flex;
+  margin-bottom: 0.75rem;
+  align-items: center;
+}
+
+.detail-row:last-child {
+  margin-bottom: 0;
+}
+
+.detail-label {
+  width: 70px;
+  font-weight: 500;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.detail-value {
+  flex: 1;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  position: relative;
+  padding: 0.5rem 0.75rem;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.detail-value:hover {
+  background-color: #e8e8e8;
+}
+
+.detail-value:hover .copy-hint {
+  opacity: 1;
+}
+
+.copy-hint {
+  font-size: 0.7rem;
+  color: var(--primary-color);
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.password-value {
+  font-family: monospace;
+  letter-spacing: 1px;
+}
+
+.remarks {
+  font-style: italic;
+  white-space: normal;
+  line-height: 1.4;
+}
+
+/* Animation for items */
+.password-item-enter-active,
+.password-item-leave-active {
+  transition: all 0.5s ease;
+}
+
+.password-item-enter-from {
+  opacity: 0;
+  transform: translateX(-30px);
+}
+
+.password-item-leave-to {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+/* Delete confirmation modal */
+.modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -119,11 +313,126 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
+  z-index: 100;
 }
-.modal-content {
+
+.delete-modal {
   background: white;
-  padding: 20px;
-  border-radius: 5px;
-  text-align: center;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: var(--text-color);
+}
+
+.close-button {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #666;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.warning {
+  color: var(--danger-color);
+  font-weight: 500;
+  margin-top: 0.5rem;
+}
+
+.modal-footer {
+  padding: 1rem 1.5rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.btn-secondary {
+  padding: 0.6rem 1.2rem;
+  background-color: #f1f1f1;
+  color: #666;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-danger {
+  padding: 0.6rem 1.2rem;
+  background-color: var(--danger-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background-color: #e5e5e5;
+}
+
+.btn-danger:hover {
+  background-color: #e5136c;
+}
+
+/* Modal transition */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+@media (max-width: 576px) {
+  .password-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .password-url {
+    max-width: 100%;
+    margin-bottom: 0.75rem;
+  }
+  
+  .password-actions {
+    align-self: flex-end;
+  }
+  
+  .detail-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .detail-label {
+    width: 100%;
+    margin-bottom: 0.25rem;
+  }
+  
+  .detail-value {
+    width: 100%;
+  }
 }
 </style>
