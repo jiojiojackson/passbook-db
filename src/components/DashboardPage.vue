@@ -114,7 +114,7 @@
 </template>
 
 <script>
-import { ref, onMounted, computed, watchEffect } from 'vue';
+import { ref, onMounted, computed, watchEffect, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import PasswordList from './PasswordList.vue';
 import PasswordForm from './PasswordForm.vue';
@@ -287,6 +287,33 @@ export default {
     const toggleSidebar = async () => {
       refreshToken();
       isSidebarOpen.value = !isSidebarOpen.value;
+      
+      // On mobile, clicking outside the sidebar should close it
+      if (isSidebarOpen.value && window.innerWidth <= 768) {
+        document.body.addEventListener('click', handleClickOutside);
+      } else {
+        document.body.removeEventListener('click', handleClickOutside);
+      }
+    };
+
+    const handleClickOutside = (event) => {
+      // Check if click is outside sidebar
+      const sidebar = document.querySelector('.sidebar');
+      const clickedSidebar = sidebar.contains(event.target);
+      const clickedToggleButton = event.target.closest('.toggle-sidebar-btn');
+      
+      if (!clickedSidebar && !clickedToggleButton) {
+        isSidebarOpen.value = false;
+        document.body.removeEventListener('click', handleClickOutside);
+      }
+    };
+
+    // Handle mobile viewport changes
+    const checkViewport = () => {
+      // Auto-close sidebar on mobile when viewport changes to small size
+      if (window.innerWidth <= 768 && isSidebarOpen.value) {
+        isSidebarOpen.value = false;
+      }
     };
 
     const checkTokenValidity = async () => {
@@ -315,6 +342,9 @@ export default {
       await refreshToken();
       fetchPasswords();
       startTokenValidationInterval();
+      
+      // Add resize event listener for responsive behavior
+      window.addEventListener('resize', checkViewport);
     });
 
     const filteredPasswords = computed(() => {
@@ -362,6 +392,12 @@ export default {
         currentPage.value--;
       }
     };
+
+    onUnmounted(() => {
+      // Clean up event listeners
+      window.removeEventListener('resize', checkViewport);
+      document.body.removeEventListener('click', handleClickOutside);
+    });
 
     return {
       passwords,
@@ -751,6 +787,92 @@ export default {
 
   .main-content {
     padding: 1rem;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .btn-secondary, .btn-primary {
+    width: 100%;
+  }
+  
+  .pagination-controls {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  
+  .pagination-btn {
+    width: 100%;
+    margin: 0;
+  }
+}
+
+/* Additional styles for smaller phones */
+@media (max-width: 480px) {
+  .dashboard-header {
+    padding: 0.75rem 1rem;
+  }
+  
+  .app-title {
+    font-size: 1.2rem;
+  }
+  
+  .search-input {
+    padding: 0.5rem 1rem 0.5rem 2.2rem;
+  }
+  
+  .toggle-sidebar-btn {
+    padding: 0.4rem 0.7rem;
+    font-size: 0.8rem;
+  }
+  
+  .passwords-header h2 {
+    font-size: 1.3rem;
+  }
+  
+  .modal-content {
+    width: 95%;
+    margin: 0 10px;
+  }
+  
+  .modal-header h2 {
+    font-size: 1.1rem;
+  }
+  
+  .form-input {
+    padding: 10px 12px;
+  }
+}
+
+/* Tablet optimizations */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .main-content {
+    padding: 1.5rem;
+  }
+  
+  .sidebar {
+    width: 300px;
+  }
+}
+
+/* Landscape phone orientation */
+@media (max-height: 500px) and (orientation: landscape) {
+  .sidebar {
+    height: calc(100vh - 60px);
+    top: 60px;
+    padding: 1rem;
+  }
+  
+  .modal-content {
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  
+  .form-group {
+    margin-bottom: 0.75rem;
   }
 }
 </style>

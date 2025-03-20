@@ -259,4 +259,101 @@ export default {
     transform: translateY(0);
   }
 }
+
+/* Responsive design */
+@media (max-width: 576px) {
+  .register-container {
+    padding: 10px;
+  }
+  
+  .register-title {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+  }
+  
+  .form-card {
+    padding: 1.5rem;
+  }
+  
+  .form-input {
+    padding: 10px 14px;
+  }
+  
+  .btn-primary, .btn-secondary {
+    padding: 10px;
+    font-size: 0.95rem;
+  }
+  
+  .qr-code {
+    max-width: 180px;
+  }
+  
+  .secret-value {
+    font-size: 0.95rem;
+  }
+}
+
+/* Extra small devices */
+@media (max-width: 360px) {
+  .register-title {
+    font-size: 1.75rem;
+  }
+  
+  .form-card {
+    padding: 1.25rem;
+  }
+  
+  .form-group label {
+    font-size: 0.85rem;
+  }
+  
+  .qr-code {
+    max-width: 150px;
+  }
+  
+  .secret-value {
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+  }
+  
+  .qr-instructions {
+    font-size: 0.9rem;
+  }
+}
+
+/* Landscape mode for phones */
+@media (max-height: 500px) and (orientation: landscape) {
+  .register-page {
+    padding: 1rem 0;
+  }
+  
+  .register-title {
+    font-size: 1.75rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .form-group {
+    margin-bottom: 0.75rem;
+  }
+  
+  .qr-code-wrapper {
+    margin: 1rem 0;
+  }
+  
+  .qr-code {
+    max-width: 120px;
+  }
+  
+  .secret-key {
+    margin: 1rem 0;
+    padding: 0.75rem;
+  }
+}
+
+/* Medium devices (tablets) */
+@media (min-width: 577px) and (max-width: 992px) {
+  .register-container {
+    max-width: 380px;
+  }
+}
 </style>

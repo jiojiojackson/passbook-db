@@ -322,4 +322,48 @@ export default {
     transform: translateY(0);
   }
 }
+
+/* Mobile Responsive Styles */
+@media (max-width: 576px) {
+  .form-input {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.9rem;
+  }
+  
+  .generate-button {
+    width: 2rem;
+    height: 2rem;
+  }
+  
+  .submit-button {
+    padding: 0.6rem;
+  }
+}
+
+/* Extra small devices */
+@media (max-width: 360px) {
+  .form-group label {
+    font-size: 0.85rem;
+  }
+  
+  .form-input {
+    padding: 0.5rem 0.7rem;
+  }
+  
+  .password-input {
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+  }
+  
+  .strength-text {
+    font-size: 0.7rem;
+  }
+}
+
+/* Better tablet layout */
+@media (min-width: 577px) and (max-width: 992px) {
+  .password-form {
+    gap: 0.8rem;
+  }
+}
 </style>

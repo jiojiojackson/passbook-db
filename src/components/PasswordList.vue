@@ -298,6 +298,27 @@ export default {
   opacity: 1;
 }
 
+/* Touch device optimizations for copy functionality */
+@media (hover: none) {
+  .copy-hint {
+    opacity: 0.7;
+    font-size: 0.75rem;
+    padding: 3px 8px;
+  }
+  
+  .detail-value {
+    position: relative;
+    padding-right: 60px; /* Make room for the copy hint */
+  }
+  
+  .copy-hint-visible {
+    opacity: 1;
+    background-color: rgba(var(--primary-color-rgb, 67, 97, 238), 0.2);
+    color: var(--primary-color);
+    font-weight: bold;
+  }
+}
+
 .password-value {
   font-family: monospace;
   letter-spacing: 1px;
@@ -456,6 +477,45 @@ export default {
   
   .detail-value {
     width: 100%;
+  }
+}
+
+@media (min-width: 577px) and (max-width: 768px) {
+  .detail-label {
+    width: 80px;
+  }
+}
+
+@media (max-width: 992px) {
+  .delete-modal {
+    width: 95%;
+  }
+}
+
+/* Adjust font sizes for mobile */
+@media (max-width: 576px) {
+  .password-url {
+    font-size: 1rem;
+  }
+  
+  .detail-label {
+    font-size: 0.85rem;
+  }
+  
+  .detail-value {
+    font-size: 0.95rem;
+  }
+}
+
+/* For very small screens */
+@media (max-width: 320px) {
+  .password-actions {
+    gap: 0.3rem;
+  }
+  
+  .action-button {
+    width: 28px;
+    height: 28px;
   }
 }
 </style>

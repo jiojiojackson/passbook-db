@@ -243,4 +243,86 @@ export default {
 .buttons-row {
   margin-top: 1.5rem;
 }
+
+/* Responsive design */
+@media (max-width: 576px) {
+  .login-container {
+    padding: 10px;
+  }
+  
+  .login-title {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+  }
+  
+  .form-card {
+    padding: 1.5rem;
+  }
+  
+  .form-input {
+    padding: 10px 14px;
+  }
+  
+  .btn-primary, .btn-secondary {
+    padding: 10px;
+    font-size: 0.95rem;
+  }
+}
+
+/* Extra small devices */
+@media (max-width: 360px) {
+  .login-title {
+    font-size: 1.75rem;
+  }
+  
+  .form-card {
+    padding: 1.25rem;
+  }
+  
+  .form-group label {
+    font-size: 0.85rem;
+  }
+  
+  .totp-input {
+    letter-spacing: 1rem;
+    padding-left: 1rem;
+    font-size: 0.9rem;
+  }
+  
+  .totp-dot {
+    width: 10px;
+    height: 10px;
+  }
+}
+
+/* Landscape mode for phones */
+@media (max-height: 500px) and (orientation: landscape) {
+  .login-page {
+    padding: 1rem 0;
+  }
+  
+  .login-title {
+    font-size: 1.75rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .form-group {
+    margin-bottom: 0.75rem;
+  }
+}
+
+/* Medium devices (tablets) */
+@media (min-width: 577px) and (max-width: 992px) {
+  .login-container {
+    max-width: 380px;
+  }
+}
+
+/* High DPI mobile devices */
+@media (-webkit-min-device-pixel-ratio: 2) and (max-width: 576px), 
+       (min-resolution: 192dpi) and (max-width: 576px) {
+  .form-card {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  }
+}
 </style>
