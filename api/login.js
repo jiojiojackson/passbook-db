@@ -34,7 +34,7 @@ module.exports = async (req, res) => {
       }
 
       // Changed expiration time to 5 minutes
-      const jwtToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '30m' });
+      const jwtToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '2m' });
       res.status(200).json({ token: jwtToken });
     } catch (error) {
       console.error('Login error:', error);
