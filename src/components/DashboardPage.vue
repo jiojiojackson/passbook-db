@@ -348,13 +348,31 @@ export default {
     });
 
     const filteredPasswords = computed(() => {
-      const lowerCaseQuery = searchQuery.value.toLowerCase();
-      return passwords.value.filter(
-        (pwd) =>
-          pwd.url.toLowerCase().includes(lowerCaseQuery) ||
-          pwd.username.toLowerCase().includes(lowerCaseQuery) ||
-          pwd.remarks.toLowerCase().includes(lowerCaseQuery)
-      );
+      const lowerCaseQuery = searchQuery.value.toLowerCase().trim();
+      if (!lowerCaseQuery) {
+        return passwords.value;
+      }
+
+      if (lowerCaseQuery.includes('|')) {
+        const keywords = lowerCaseQuery.split('|').map(k => k.trim()).filter(Boolean);
+        if (keywords.length === 0) {
+            return passwords.value;
+        }
+        return passwords.value.filter(pwd => {
+          return keywords.some(keyword =>
+            pwd.url.toLowerCase().includes(keyword) ||
+            pwd.username.toLowerCase().includes(keyword) ||
+            (pwd.remarks && pwd.remarks.toLowerCase().includes(keyword))
+          );
+        });
+      } else {
+        return passwords.value.filter(
+          (pwd) =>
+            pwd.url.toLowerCase().includes(lowerCaseQuery) ||
+            pwd.username.toLowerCase().includes(lowerCaseQuery) ||
+            (pwd.remarks && pwd.remarks.toLowerCase().includes(lowerCaseQuery))
+        );
+      }
     });
     
     // Computed for total pages
