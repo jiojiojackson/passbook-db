@@ -348,13 +348,42 @@ export default {
     });
 
     const filteredPasswords = computed(() => {
-      const lowerCaseQuery = searchQuery.value.toLowerCase();
-      return passwords.value.filter(
-        (pwd) =>
-          pwd.url.toLowerCase().includes(lowerCaseQuery) ||
-          pwd.username.toLowerCase().includes(lowerCaseQuery) ||
-          pwd.remarks.toLowerCase().includes(lowerCaseQuery)
-      );
+      const lowerCaseQuery = searchQuery.value.toLowerCase().trim();
+      if (!lowerCaseQuery) {
+        return passwords.value;
+      }
+
+      let keywords;
+      let logic; // 'AND' or 'OR'
+
+      if (lowerCaseQuery.includes('&')) {
+        keywords = lowerCaseQuery.split('&').map(k => k.trim()).filter(Boolean);
+        logic = 'AND';
+      } else if (lowerCaseQuery.includes('|')) {
+        keywords = lowerCaseQuery.split('|').map(k => k.trim()).filter(Boolean);
+        logic = 'OR';
+      } else {
+        keywords = [lowerCaseQuery];
+        logic = 'OR'; // Same as AND for a single keyword
+      }
+
+      if (keywords.length === 0) {
+        return passwords.value;
+      }
+
+      return passwords.value.filter(pwd => {
+        const combinedText = (
+          pwd.url + ' ' +
+          pwd.username + ' ' +
+          (pwd.remarks || '')
+        ).toLowerCase();
+
+        if (logic === 'AND') {
+          return keywords.every(keyword => combinedText.includes(keyword));
+        } else { // OR
+          return keywords.some(keyword => combinedText.includes(keyword));
+        }
+      });
     });
     
     // Computed for total pages
