@@ -353,26 +353,37 @@ export default {
         return passwords.value;
       }
 
-      if (lowerCaseQuery.includes('|')) {
-        const keywords = lowerCaseQuery.split('|').map(k => k.trim()).filter(Boolean);
-        if (keywords.length === 0) {
-            return passwords.value;
-        }
-        return passwords.value.filter(pwd => {
-          return keywords.some(keyword =>
-            pwd.url.toLowerCase().includes(keyword) ||
-            pwd.username.toLowerCase().includes(keyword) ||
-            (pwd.remarks && pwd.remarks.toLowerCase().includes(keyword))
-          );
-        });
+      let keywords;
+      let logic; // 'AND' or 'OR'
+
+      if (lowerCaseQuery.includes('&')) {
+        keywords = lowerCaseQuery.split('&').map(k => k.trim()).filter(Boolean);
+        logic = 'AND';
+      } else if (lowerCaseQuery.includes('|')) {
+        keywords = lowerCaseQuery.split('|').map(k => k.trim()).filter(Boolean);
+        logic = 'OR';
       } else {
-        return passwords.value.filter(
-          (pwd) =>
-            pwd.url.toLowerCase().includes(lowerCaseQuery) ||
-            pwd.username.toLowerCase().includes(lowerCaseQuery) ||
-            (pwd.remarks && pwd.remarks.toLowerCase().includes(lowerCaseQuery))
-        );
+        keywords = [lowerCaseQuery];
+        logic = 'OR'; // Same as AND for a single keyword
       }
+
+      if (keywords.length === 0) {
+        return passwords.value;
+      }
+
+      return passwords.value.filter(pwd => {
+        const combinedText = (
+          pwd.url + ' ' +
+          pwd.username + ' ' +
+          (pwd.remarks || '')
+        ).toLowerCase();
+
+        if (logic === 'AND') {
+          return keywords.every(keyword => combinedText.includes(keyword));
+        } else { // OR
+          return keywords.some(keyword => combinedText.includes(keyword));
+        }
+      });
     });
     
     // Computed for total pages
