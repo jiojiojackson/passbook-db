@@ -1,6 +1,5 @@
 const { Pool } = require('pg');
-const speakeasy = require('speakeasy');
-const qrcode = require('qrcode');
+const bcrypt = require('bcryptjs');
 
 const pool = new Pool({
   connectionString: process.env.POSTGRES_URL,
@@ -11,7 +10,7 @@ const pool = new Pool({
 
 module.exports = async (req, res) => {
   if (req.method === 'POST') {
-    const { username } = req.body;
+    const { username, password } = req.body;
 
     try {
       // Check if username already exists
@@ -22,22 +21,16 @@ module.exports = async (req, res) => {
         return;
       }
 
-      // Generate TOTP secret
-      const secret = speakeasy.generateSecret({
-        name: `PassbookDB:${username}`
-      });
+      // Hash password
+      const saltRounds = 10;
+      const passwordHash = await bcrypt.hash(password, saltRounds);
 
-      // Store user with TOTP secret
-      await pool.query('INSERT INTO users (username, totp_secret) VALUES ($1, $2)', 
-        [username, secret.base32]);
-
-      // Generate QR code
-      const qrCodeUrl = await qrcode.toDataURL(secret.otpauth_url);
+      // Store user with password hash
+      await pool.query('INSERT INTO users (username, password_hash) VALUES ($1, $2)', 
+        [username, passwordHash]);
 
       res.status(201).json({ 
-        message: 'User registered successfully',
-        secret: secret.base32,
-        qrCode: qrCodeUrl
+        message: 'User registered successfully'
       });
     } catch (error) {
       console.error('Registration error:', error);

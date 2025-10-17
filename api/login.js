@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const speakeasy = require('speakeasy');
+const bcrypt = require('bcryptjs');
 const { Pool } = require('pg');
 
 const pool = new Pool({
@@ -11,7 +11,7 @@ const pool = new Pool({
 
 module.exports = async (req, res) => {
   if (req.method === 'POST') {
-    const { username, token } = req.body;
+    const { username, password } = req.body;
 
     try {
       const { rows } = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
@@ -22,18 +22,13 @@ module.exports = async (req, res) => {
 
       const user = rows[0];
       
-      // Verify TOTP token
-      const verified = speakeasy.totp.verify({
-        secret: user.totp_secret,
-        encoding: 'base32',
-        token: token
-      });
+      // Verify password
+      const validPassword = await bcrypt.compare(password, user.password_hash);
 
-      if (!verified) {
-        return res.status(401).json({ error: 'Invalid TOTP token' });
+      if (!validPassword) {
+        return res.status(401).json({ error: 'Invalid credentials' });
       }
 
-      // Changed expiration time to 5 minutes
       const jwtToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: process.env.TOKEN_TIME });
       res.status(200).json({ token: jwtToken });
     } catch (error) {
