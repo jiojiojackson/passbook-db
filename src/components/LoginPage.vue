@@ -14,31 +14,21 @@
               class="form-input"
               autocomplete="username"
               required
-              @keyup.enter="$event.target.form.querySelector('#totp').focus()"
+              @keyup.enter="$event.target.form.querySelector('#password').focus()"
             >
           </div>
           <div class="form-group">
-            <label for="totp">2FA验证码</label>
-            <div class="totp-input-wrapper">
-              <input 
-                id="totp" 
-                v-model="totpToken" 
-                type="text" 
-                maxlength="6" 
-                pattern="[0-9]*" 
-                inputmode="numeric"
-                placeholder="输入6位验证码"
-                class="form-input totp-input"
-                autocomplete="one-time-code"
-                required
-                @keyup.enter="loginBtnRef.click()"
-              >
-              <div class="totp-dots">
-                <span v-for="(digit, index) in 6" :key="index" 
-                      class="totp-dot" 
-                      :class="{ 'filled': totpToken.length > index }"></span>
-              </div>
-            </div>
+            <label for="password">密码</label>
+            <input 
+              id="password" 
+              v-model="password" 
+              type="password"
+              placeholder="输入密码"
+              class="form-input"
+              autocomplete="current-password"
+              required
+              @keyup.enter="loginBtnRef.click()"
+            >
           </div>
           <button 
             type="submit" 
@@ -62,7 +52,7 @@ import { useRouter } from 'vue-router'
 export default {
   setup() {
     const username = ref('')
-    const totpToken = ref('')
+    const password = ref('')
     const router = useRouter()
     const loginBtnRef = ref(null)
 
@@ -75,7 +65,7 @@ export default {
           },
           body: JSON.stringify({
             username: username.value,
-            token: totpToken.value,
+            password: password.value,
           }),
         })
 
@@ -85,7 +75,7 @@ export default {
           router.push('/dashboard')
         } else {
           const error = await response.json()
-          alert(error.error || '登录失败，请检查用户名和验证码')
+          alert(error.error || '登录失败，请检查用户名和密码')
         }
       } catch (error) {
         console.error('登录错误:', error)
@@ -99,7 +89,7 @@ export default {
 
     return {
       username,
-      totpToken,
+      password,
       login,
       goToRegister,
       loginBtnRef
@@ -175,35 +165,7 @@ export default {
   box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
 }
 
-.totp-input-wrapper {
-  position: relative;
-}
 
-.totp-input {
-  letter-spacing: 1.5rem;
-  padding-left: 1.5rem;
-  font-weight: 600;
-}
-
-.totp-dots {
-  display: flex;
-  justify-content: space-between;
-  padding: 0 1rem;
-  margin-top: 0.5rem;
-}
-
-.totp-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background-color: var(--border-color);
-  transition: all 0.2s ease;
-}
-
-.totp-dot.filled {
-  background-color: var(--primary-color);
-  transform: scale(1.2);
-}
 
 .btn-primary {
   width: 100%;
@@ -283,16 +245,7 @@ export default {
     font-size: 0.85rem;
   }
   
-  .totp-input {
-    letter-spacing: 1rem;
-    padding-left: 1rem;
-    font-size: 0.9rem;
-  }
-  
-  .totp-dot {
-    width: 10px;
-    height: 10px;
-  }
+
 }
 
 /* Landscape mode for phones */

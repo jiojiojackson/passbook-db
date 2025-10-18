@@ -2,10 +2,10 @@
   <div class="register-page">
     <div class="register-container">
       <h1 class="register-title">密码管理器</h1>
-      <div class="form-card" :class="{'expanded': showQR}">
-        <div v-if="!showQR" class="register-form-container">
+      <div class="form-card">
+        <div class="register-form-container">
           <h2>创建新账户</h2>
-          <p class="subtitle">注册后需要使用2FA验证器进行身份验证</p>
+          <p class="subtitle">请输入用户名和密码完成注册</p>
           <form @submit.prevent="register" class="register-form">
             <div class="form-group">
               <label for="username">用户名</label>
@@ -18,30 +18,34 @@
                 required
               >
             </div>
+            <div class="form-group">
+              <label for="password">密码</label>
+              <input 
+                type="password" 
+                id="password" 
+                v-model="password" 
+                class="form-input"
+                placeholder="请输入密码" 
+                required
+                minlength="6"
+              >
+            </div>
+            <div class="form-group">
+              <label for="confirmPassword">确认密码</label>
+              <input 
+                type="password" 
+                id="confirmPassword" 
+                v-model="confirmPassword" 
+                class="form-input"
+                placeholder="请再次输入密码" 
+                required
+                minlength="6"
+              >
+            </div>
             <button type="submit" class="btn-primary">注册</button>
           </form>
           <div class="back-to-login">
             <button @click="$router.push('/login')" class="btn-secondary">返回登录</button>
-          </div>
-        </div>
-        
-        <div v-else class="qr-container">
-          <h2>设置双重验证</h2>
-          <p class="qr-instructions">请使用Google Authenticator或其他2FA应用扫描以下二维码</p>
-          
-          <div class="qr-code-wrapper">
-            <img :src="qrCode" alt="TOTP QR Code" class="qr-code">
-          </div>
-          
-          <div class="secret-key">
-            <p>或手动输入密钥:</p>
-            <div class="secret-value">
-              {{ formatSecret(secret) }}
-            </div>
-          </div>
-          
-          <div class="qr-actions">
-            <button @click="$router.push('/login')" class="btn-primary">进入登录</button>
           </div>
         </div>
       </div>
@@ -54,13 +58,22 @@ export default {
   data() {
     return {
       username: '',
-      showQR: false,
-      qrCode: '',
-      secret: ''
+      password: '',
+      confirmPassword: ''
     };
   },
   methods: {
     async register() {
+      if (this.password !== this.confirmPassword) {
+        alert('两次输入的密码不一致');
+        return;
+      }
+
+      if (this.password.length < 6) {
+        alert('密码长度至少为6位');
+        return;
+      }
+
       try {
         const response = await fetch('/api/signup', {
           method: 'POST',
@@ -68,27 +81,23 @@ export default {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            username: this.username
+            username: this.username,
+            password: this.password
           })
         });
         
         const data = await response.json();
 
         if (response.ok) {
-          this.qrCode = data.qrCode;
-          this.secret = data.secret;
-          this.showQR = true;
+          alert('注册成功！请登录');
+          this.$router.push('/login');
         } else {
-          alert(data.error);
+          alert(data.error || '注册失败');
         }
       } catch (error) {
         console.error('Registration error:', error);
-        alert('An error occurred. Please try again.');
+        alert('注册过程中发生错误，请重试');
       }
-    },
-    formatSecret(secret) {
-      // Format the secret key with spaces every 4 characters for readability
-      return secret.replace(/(.{4})/g, '$1 ').trim();
     }
   }
 };
@@ -123,10 +132,6 @@ export default {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
   padding: 2rem;
   transition: all 0.3s ease;
-}
-
-.form-card.expanded {
-  max-width: 100%;
 }
 
 .subtitle {
@@ -202,64 +207,6 @@ export default {
   margin-top: 1.5rem;
 }
 
-.qr-container {
-  animation: fadeIn 0.5s ease;
-}
-
-.qr-instructions {
-  margin-bottom: 1.5rem;
-  color: #666;
-}
-
-.qr-code-wrapper {
-  display: flex;
-  justify-content: center;
-  margin: 1.5rem 0;
-}
-
-.qr-code {
-  max-width: 200px;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease;
-}
-
-.qr-code:hover {
-  transform: scale(1.05);
-}
-
-.secret-key {
-  margin: 1.5rem 0;
-  padding: 1rem;
-  background-color: #f5f5f5;
-  border-radius: 8px;
-}
-
-.secret-value {
-  font-family: monospace;
-  font-size: 1.1rem;
-  letter-spacing: 1px;
-  color: var(--primary-color);
-  margin-top: 0.5rem;
-  font-weight: 600;
-  word-break: break-all;
-}
-
-.qr-actions {
-  margin-top: 2rem;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 /* Responsive design */
 @media (max-width: 576px) {
   .register-container {
@@ -284,13 +231,7 @@ export default {
     font-size: 0.95rem;
   }
   
-  .qr-code {
-    max-width: 180px;
-  }
-  
-  .secret-value {
-    font-size: 0.95rem;
-  }
+
 }
 
 /* Extra small devices */
@@ -307,18 +248,7 @@ export default {
     font-size: 0.85rem;
   }
   
-  .qr-code {
-    max-width: 150px;
-  }
-  
-  .secret-value {
-    font-size: 0.85rem;
-    letter-spacing: 0.5px;
-  }
-  
-  .qr-instructions {
-    font-size: 0.9rem;
-  }
+
 }
 
 /* Landscape mode for phones */
@@ -336,18 +266,7 @@ export default {
     margin-bottom: 0.75rem;
   }
   
-  .qr-code-wrapper {
-    margin: 1rem 0;
-  }
-  
-  .qr-code {
-    max-width: 120px;
-  }
-  
-  .secret-key {
-    margin: 1rem 0;
-    padding: 0.75rem;
-  }
+
 }
 
 /* Medium devices (tablets) */
