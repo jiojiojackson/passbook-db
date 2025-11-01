@@ -6,6 +6,13 @@
       <!-- 账号密码登录表单 -->
       <div v-if="!showAuthStep && !showBindDevice" class="form-card">
         <h2>登录</h2>
+        
+        <!-- 自动认证提示 -->
+        <div v-if="isLoading && autoAuthAttempted && !username" class="auto-auth-hint">
+          <div class="spinner"></div>
+          <span>正在尝试自动认证...</span>
+        </div>
+        
         <form @submit.prevent="login" class="login-form">
           <div class="form-group">
             <label for="username">用户名</label>
@@ -118,7 +125,7 @@
 </template>
 
 <script>
-import { ref, onUnmounted } from 'vue'
+import { ref, onUnmounted, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 export default {
@@ -142,6 +149,7 @@ export default {
     const showBindDevice = ref(false)
     const inviteCode = ref('')
     let checkWebAuthnTimeout = null
+    const autoAuthAttempted = ref(false) // 防止重复自动认证
 
     // 检查用户是否有 WebAuthn 设备（带防抖）
     const checkWebAuthn = async () => {
@@ -178,9 +186,9 @@ export default {
     }
 
     // WebAuthn 登录
-    const loginWithWebAuthn = async () => {
+    const loginWithWebAuthn = async (silent = false) => {
       if (!username.value) {
-        alert('请输入用户名')
+        if (!silent) alert('请输入用户名')
         return
       }
 
@@ -200,7 +208,7 @@ export default {
 
         if (!startResponse.ok) {
           const error = await startResponse.json()
-          alert(error.error || 'WebAuthn 认证失败')
+          if (!silent) alert(error.error || 'WebAuthn 认证失败')
           isLoading.value = false
           return
         }
@@ -222,7 +230,7 @@ export default {
         })
 
         if (!credential) {
-          alert('认证被取消')
+          if (!silent) alert('认证被取消')
           isLoading.value = false
           return
         }
@@ -247,16 +255,52 @@ export default {
         if (finishResponse.ok) {
           const data = await finishResponse.json()
           sessionStorage.setItem('token', data.token)
+          // 保存用户名到 localStorage，用于下次自动登录
+          localStorage.setItem('lastUsername', username.value)
           router.push('/dashboard')
         } else {
           const error = await finishResponse.json()
-          alert(error.error || 'WebAuthn 认证失败')
+          if (!silent) alert(error.error || 'WebAuthn 认证失败')
         }
       } catch (error) {
         console.error('WebAuthn 登录错误:', error)
-        alert('WebAuthn 认证过程中发生错误: ' + error.message)
+        if (!silent) alert('WebAuthn 认证过程中发生错误: ' + error.message)
       } finally {
         isLoading.value = false
+      }
+    }
+
+    // 自动 WebAuthn 认证
+    const tryAutoWebAuthnLogin = async () => {
+      if (autoAuthAttempted.value) return
+      autoAuthAttempted.value = true
+
+      // 获取上次登录的用户名
+      const lastUsername = localStorage.getItem('lastUsername')
+      if (!lastUsername) return
+
+      username.value = lastUsername
+
+      // 检查是否有 WebAuthn 设备
+      try {
+        const response = await fetch('/api/webauthn-check', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ username: lastUsername }),
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          if (data.hasWebAuthn) {
+            hasWebAuthn.value = true
+            // 自动触发 WebAuthn 认证
+            await loginWithWebAuthn(true)
+          }
+        }
+      } catch (error) {
+        console.error('自动认证检查失败:', error)
       }
     }
 
@@ -481,6 +525,11 @@ export default {
     const goToRegister = () => {
       router.push('/signup')
     }
+
+    // 组件挂载时尝试自动登录
+    onMounted(() => {
+      tryAutoWebAuthnLogin()
+    })
 
     // 组件卸载时清理定时器
     onUnmounted(() => {
@@ -724,6 +773,19 @@ export default {
   margin-bottom: 1rem;
   font-size: 0.9rem;
   text-align: center;
+}
+
+.auto-auth-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 12px;
+  background-color: rgba(67, 97, 238, 0.1);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  color: var(--primary-color);
+  font-size: 0.9rem;
 }
 
 .btn-primary:disabled {
