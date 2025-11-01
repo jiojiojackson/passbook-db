@@ -9,6 +9,7 @@ https://passbook-db.vercel.app/login
 
 - **安全密码存储**：所有密码在存储到数据库前使用 AES-256-CBC 加密
 - **用户认证系统**：完整的注册/登录系统，支持 JWT 身份验证
+- **WebAuthn 认证**：🆕 支持指纹、面部识别等生物识别快速登录
 - **二重认证**：集成基于数字匹配的二重认证，增强账户安全性
 - **密码管理**：支持密码条目的创建、读取、更新和删除（CRUD）操作
 - **高级搜索**：支持多关键词搜索，可使用 `&`（与）和 `|`（或）逻辑运算符
@@ -33,6 +34,7 @@ https://passbook-db.vercel.app/login
 ### 安全特性
 - **AES-256-CBC 加密**：所有存储的密码都经过强加密
 - **JWT 令牌认证**：支持活动时间追踪和自动过期机制
+- **WebAuthn 认证**：🆕 基于公钥加密的生物识别认证，凭证不离开设备
 - **会话管理**：使用 sessionStorage 存储令牌，关闭浏览器后自动失效
 - **无操作超时**：超过 TOKEN_TIME 无操作后令牌自动失效
 - **bcrypt 密码哈希**：使用 10 轮盐值加密用户密码
@@ -149,6 +151,29 @@ npm run serve
 
 详细说明请参考 [TWO_FACTOR_AUTH.md](TWO_FACTOR_AUTH.md)
 
+## WebAuthn 认证功能 🆕
+
+支持使用平台认证器（Windows Hello、Touch ID、Face ID）或外部安全密钥进行快速登录。
+
+### 主要特性
+- **设备绑定**：通过邀请码绑定可信设备
+- **快速登录**：已绑定设备可跳过二重认证
+- **向后兼容**：保留原有登录方式，未绑定设备正常使用
+- **设备管理**：在 Dashboard 中查看和删除已绑定设备
+
+### 使用流程
+1. **绑定设备**：在登录页面输入用户名和密码，点击"🔐 绑定 WebAuthn 设备"，输入邀请码完成绑定
+2. **快速登录**：输入用户名后，点击"🔐 使用设备认证登录"，完成生物识别即可登录
+3. **管理设备**：登录后在 Dashboard 侧边栏查看和管理已绑定设备
+
+### 浏览器支持
+- Chrome 67+
+- Firefox 60+
+- Safari 13+
+- Edge 18+
+
+详细说明请参考 [WEBAUTHN_DEPLOYMENT.md](WEBAUTHN_DEPLOYMENT.md)
+
 ## 高级功能
 
 ### 搜索功能
@@ -177,6 +202,7 @@ npm run serve
 | `JWT_SECRET` | JWT 令牌签名密钥 | `your-super-secret-jwt-key-here` |
 | `ENCRYPTION_KEY` | AES-256 加密密钥（64 位十六进制） | `0123...abcdef`（64 字符） |
 | `TOKEN_TIME` | JWT 令牌过期时间 | `1h` 或 `7d` |
+| `WEBAUTHN_INVITE_CODE` | 🆕 WebAuthn 设备绑定邀请码 | `your-secure-invite-code` |
 
 ### 生成加密密钥
 
@@ -209,25 +235,31 @@ npm run lint      # 代码检查和自动修复
 
 ```
 passbook-db/
-├── api/                      # 后端 API 接口
-│   ├── login.js             # 登录接口（含二重认证）
-│   ├── signup.js            # 注册接口
-│   ├── passwords.js         # 密码管理 CRUD
-│   ├── refresh-token.js     # 令牌刷新
-│   └── validate-token.js    # 令牌验证
+├── api/                          # 后端 API 接口
+│   ├── login.js                 # 登录接口（含二重认证）
+│   ├── signup.js                # 注册接口
+│   ├── passwords.js             # 密码管理 CRUD
+│   ├── refresh-token.js         # 令牌刷新
+│   ├── validate-token.js        # 令牌验证
+│   ├── webauthn-register.js     # 🆕 WebAuthn 设备注册
+│   ├── webauthn-authenticate.js # 🆕 WebAuthn 认证
+│   ├── webauthn-check.js        # 🆕 检查设备绑定状态
+│   └── webauthn-manage.js       # 🆕 设备管理
 ├── src/
-│   ├── components/          # Vue 组件
-│   │   ├── LoginPage.vue    # 登录页面
-│   │   ├── RegisterPage.vue # 注册页面
-│   │   ├── DashboardPage.vue # 仪表板
-│   │   ├── PasswordList.vue # 密码列表
-│   │   └── PasswordForm.vue # 密码表单
-│   ├── router/              # 路由配置
-│   ├── App.vue              # 根组件
-│   └── main.js              # 入口文件
-├── public/                  # 静态资源
-├── package.json             # 项目依赖
-└── vue.config.js            # Vue 配置
+│   ├── components/              # Vue 组件
+│   │   ├── LoginPage.vue        # 登录页面（含 WebAuthn）
+│   │   ├── RegisterPage.vue     # 注册页面
+│   │   ├── DashboardPage.vue    # 仪表板
+│   │   ├── PasswordList.vue     # 密码列表
+│   │   ├── PasswordForm.vue     # 密码表单
+│   │   └── WebAuthnManager.vue  # 🆕 WebAuthn 设备管理
+│   ├── router/                  # 路由配置
+│   ├── App.vue                  # 根组件
+│   └── main.js                  # 入口文件
+├── public/                      # 静态资源
+├── test-webauthn.html           # 🆕 WebAuthn 功能测试页面
+├── package.json                 # 项目依赖
+└── vue.config.js                # Vue 配置
 ```
 
 ## 安全考虑
