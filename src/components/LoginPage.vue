@@ -87,6 +87,9 @@ export default {
     const login = async () => {
       isLoading.value = true
       try {
+        // 获取客户端时区信息
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+        
         const response = await fetch('/api/login', {
           method: 'POST',
           headers: {
@@ -95,6 +98,7 @@ export default {
           body: JSON.stringify({
             username: username.value,
             password: password.value,
+            timezone: timezone,
           }),
         })
 

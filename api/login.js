@@ -11,7 +11,7 @@ const pool = new Pool({
 
 module.exports = async (req, res) => {
   if (req.method === 'POST') {
-    const { username, password, sessionId } = req.body;
+    const { username, password, sessionId, timezone } = req.body;
 
     try {
       // 如果提供了sessionId，说明是第二步：验证二重认证
@@ -61,7 +61,7 @@ module.exports = async (req, res) => {
         body: JSON.stringify({
           appName: '密码管理器',
           clientTime: new Date().toISOString(),
-          location: 'Asia/Shanghai',
+          location: timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown',
           browserFingerprint: req.headers['user-agent'] || 'unknown',
           userAgent: req.headers['user-agent']
         })
