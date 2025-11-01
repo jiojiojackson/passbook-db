@@ -48,17 +48,11 @@
       <!-- 二重认证界面 -->
       <div v-else class="form-card auth-card">
         <h2>🔐 二重认证</h2>
-        <p class="auth-description">请在认证页面选择以下数字：</p>
+        <p class="auth-description">请在服务端认证页面选择以下数字：</p>
         <div class="client-number">{{ clientNumber }}</div>
         <p class="auth-instruction">
-          点击下方按钮打开认证页面，选择与上方相同的数字
+          请在服务端应用中选择与上方相同的数字以完成认证
         </p>
-        <a 
-          :href="`https://web-auth-five.vercel.app/admin?sessionId=${sessionId}`" 
-          target="_blank"
-          class="btn-primary auth-button">
-          打开认证页面
-        </a>
         <div class="auth-status">
           <div class="spinner"></div>
           <span>等待认证中...</span>
@@ -358,28 +352,9 @@ export default {
 
 .auth-instruction {
   color: #555;
-  margin: 1rem 0;
+  margin: 1rem 0 2rem;
   font-size: 0.9rem;
   line-height: 1.5;
-}
-
-.auth-button {
-  display: inline-block;
-  width: 100%;
-  padding: 12px;
-  background-color: var(--primary-color);
-  color: white;
-  font-size: 1rem;
-  font-weight: 600;
-  border-radius: 8px;
-  margin-top: 1rem;
-  text-decoration: none;
-  transition: all 0.2s ease;
-}
-
-.auth-button:hover {
-  background-color: var(--secondary-color);
-  transform: translateY(-2px);
 }
 
 .auth-status {
