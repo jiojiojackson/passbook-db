@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const ms = require('ms');
 const { Pool } = require('pg');
 const crypto = require('crypto');
 
@@ -41,6 +42,16 @@ const authenticateToken = (req, res, next) => {
 
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
     if (err) return res.status(403).send('Forbidden');
+    
+    // 检查最后活动时间
+    const lastActivityTime = user.lastActivityTime || 0;
+    const currentTime = Date.now();
+    const tokenTimeout = ms(process.env.TOKEN_TIME || '1h');
+    
+    if (currentTime - lastActivityTime > tokenTimeout) {
+      return res.status(401).json({ error: 'Token expired due to inactivity' });
+    }
+    
     req.user = user;
     next();
   });

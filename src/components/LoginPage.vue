@@ -121,7 +121,7 @@ export default {
             startTimer()
           } else {
             // 直接登录成功（不应该发生，但保留兼容性）
-            localStorage.setItem('token', data.token)
+            sessionStorage.setItem('token', data.token)
             router.push('/dashboard')
           }
         } else {
@@ -157,7 +157,7 @@ export default {
             if (data.token) {
               // 认证成功
               stopPolling()
-              localStorage.setItem('token', data.token)
+              sessionStorage.setItem('token', data.token)
               router.push('/dashboard')
             }
           }

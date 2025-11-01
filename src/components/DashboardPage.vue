@@ -142,13 +142,14 @@ export default {
       try {
         const response = await fetch('/api/passwords', {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
           },
         });
         if (response.ok) {
           const data = await response.json();
           passwords.value = data.map((pwd) => ({ ...pwd, visible: false }));
         } else if (response.status === 401) {
+          sessionStorage.removeItem('token');
           router.push('/login');
         }
       } catch (error) {
@@ -157,9 +158,9 @@ export default {
     };
 
     const refreshToken = () => {
-      // If last refresh was less than 1 minute ago, skip the refresh
+      // If last refresh was less than 5 seconds ago, skip the refresh
       const now = Date.now();
-      if (lastRefreshTime.value && now - lastRefreshTime.value < 60000) {
+      if (lastRefreshTime.value && now - lastRefreshTime.value < 5000) {
         return;
       }
       
@@ -170,20 +171,21 @@ export default {
       fetch('/api/refresh-token', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${sessionStorage.getItem('token')}`,
         },
       })
         .then(response => {
           if (response.ok) {
             return response.json();
           } else if (response.status === 401) {
+            sessionStorage.removeItem('token');
             router.push('/login');
             throw new Error('Unauthorized');
           }
         })
         .then(data => {
           if (data) {
-            localStorage.setItem('token', data.token);
+            sessionStorage.setItem('token', data.token);
           }
         })
         .catch(error => {
@@ -198,7 +200,7 @@ export default {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
           },
           body: JSON.stringify(newPassword),
         });
@@ -206,6 +208,7 @@ export default {
           const data = await response.json();
           passwords.value.push({ ...data, visible: false });
         } else if (response.status === 401) {
+          sessionStorage.removeItem('token');
           router.push('/login');
         }
       } catch (error) {
@@ -225,7 +228,7 @@ export default {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
           },
           body: JSON.stringify(updatedPasswordData),
         });
@@ -235,6 +238,7 @@ export default {
           passwords.value[index] = updatedPassword;
           closeModal();
         } else if (response.status === 401) {
+          sessionStorage.removeItem('token');
           router.push('/login');
         }
       } catch (error) {
@@ -248,12 +252,13 @@ export default {
         const response = await fetch(`/api/passwords?id=${passwordId}`, {
           method: 'DELETE',
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
           },
         });
         if (response.ok) {
           passwords.value = passwords.value.filter((pwd) => pwd.id !== passwordId);
         } else if (response.status === 401) {
+          sessionStorage.removeItem('token');
           router.push('/login');
         }
       } catch (error) {
@@ -268,7 +273,7 @@ export default {
     };
 
     const logout = () => {
-      localStorage.removeItem('token');
+      sessionStorage.removeItem('token');
       router.push('/login');
     };
 
@@ -321,14 +326,16 @@ export default {
         const response = await fetch('/api/validate-token', {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
           },
         });
         if (response.status === 401) {
+          sessionStorage.removeItem('token');
           router.push('/login');
         }
       } catch (error) {
         console.error('Error validating token:', error);
+        sessionStorage.removeItem('token');
         router.push('/login');
       }
     };

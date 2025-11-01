@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const ms = require('ms');
 const { Pool } = require('pg');
 
 const pool = new Pool({
@@ -19,13 +20,28 @@ module.exports = async (req, res) => {
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      
+      // 检查最后活动时间
+      const lastActivityTime = decoded.lastActivityTime || 0;
+      const currentTime = Date.now();
+      const tokenTimeout = ms(process.env.TOKEN_TIME || '1h');
+      
+      if (currentTime - lastActivityTime > tokenTimeout) {
+        return res.status(401).json({ error: 'Token expired due to inactivity' });
+      }
+      
       const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [decoded.userId]);
 
       if (rows.length === 0) {
         return res.status(401).json({ error: 'Invalid token' });
       }
 
-      const newToken = jwt.sign({ userId: decoded.userId }, process.env.JWT_SECRET, { expiresIn: process.env.TOKEN_TIME });
+      // 更新最后活动时间
+      const newToken = jwt.sign({ 
+        userId: decoded.userId,
+        lastActivityTime: currentTime
+      }, process.env.JWT_SECRET, { expiresIn: process.env.TOKEN_TIME });
+      
       res.status(200).json({ token: newToken });
     } catch (error) {
       console.error('Token refresh error:', error);

@@ -14,7 +14,7 @@ https://passbook-db.vercel.app/login
 - **高级搜索**：支持多关键词搜索，可使用 `&`（与）和 `|`（或）逻辑运算符
 - **分页显示**：密码列表支持分页浏览，提升大量数据的管理体验
 - **响应式设计**：基于 Vue.js 构建的现代化用户界面，支持桌面和移动设备
-- **自动令牌刷新**：智能的 JWT 令牌刷新机制，保持用户会话活跃
+- **智能会话管理**：基于用户活动的令牌刷新机制，无操作自动登出
 
 ## 技术栈
 
@@ -32,7 +32,9 @@ https://passbook-db.vercel.app/login
 
 ### 安全特性
 - **AES-256-CBC 加密**：所有存储的密码都经过强加密
-- **JWT 令牌认证**：支持自动刷新机制
+- **JWT 令牌认证**：支持活动时间追踪和自动过期机制
+- **会话管理**：使用 sessionStorage 存储令牌，关闭浏览器后自动失效
+- **无操作超时**：超过 TOKEN_TIME 无操作后令牌自动失效
 - **bcrypt 密码哈希**：使用 10 轮盐值加密用户密码
 - **二重认证**：基于数字匹配的额外安全层
 - **环境变量隔离**：敏感信息通过环境变量管理
@@ -109,13 +111,15 @@ npm run serve
   - 第一阶段：`{ username, password }` → 返回二重认证信息
   - 第二阶段：`{ username, password, sessionId }` → 返回 JWT token
 
-- `POST /api/refresh-token` - 刷新访问令牌
+- `POST /api/refresh-token` - 更新令牌活动时间
   - 请求头：`Authorization: Bearer <token>`
-  - 返回：新的 JWT token
+  - 返回：更新了最后活动时间的新 JWT token
+  - 说明：用户操作时自动调用，更新最后活动时间
 
-- `POST /api/validate-token` - 验证令牌有效性
+- `POST /api/validate-token` - 验证令牌有效性和活动时间
   - 请求头：`Authorization: Bearer <token>`
   - 返回：令牌验证结果
+  - 说明：检查令牌是否过期以及是否超过无操作时间限制
 
 ### 密码管理
 - `GET /api/passwords` - 获取用户所有密码

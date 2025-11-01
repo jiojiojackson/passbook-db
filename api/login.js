@@ -32,7 +32,10 @@ module.exports = async (req, res) => {
         }
 
         const user = rows[0];
-        const jwtToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: process.env.TOKEN_TIME });
+        const jwtToken = jwt.sign({ 
+          userId: user.id,
+          lastActivityTime: Date.now()
+        }, process.env.JWT_SECRET, { expiresIn: process.env.TOKEN_TIME });
         return res.status(200).json({ token: jwtToken });
       }
 
