@@ -18,6 +18,7 @@
               required
               @keyup.enter="$event.target.form.querySelector('#password').focus()"
               @blur="checkWebAuthn"
+              @input="checkWebAuthn"
             >
           </div>
           <div class="form-group">
@@ -54,14 +55,31 @@
         </form>
         <div class="buttons-row">
           <button @click="goToRegister" class="btn-secondary">还没有账号？点击注册</button>
-          <button v-if="username" @click="showBindDevice = true" class="btn-secondary">绑定新设备</button>
+          <button @click="showBindDevice = true" class="btn-secondary">🔐 绑定 WebAuthn 设备</button>
         </div>
       </div>
 
       <!-- 绑定设备界面 -->
       <div v-else-if="showBindDevice" class="form-card">
         <h2>🔐 绑定 WebAuthn 设备</h2>
-        <p class="bind-description">绑定后，可在此设备上快速登录</p>
+        <p class="bind-description">绑定后，可在此设备上使用指纹、面部识别等快速登录</p>
+        
+        <div v-if="!username || !password" class="warning-box">
+          ⚠️ 请先返回登录页面输入用户名和密码
+        </div>
+        
+        <div class="form-group">
+          <label for="bind-username-display">用户名</label>
+          <input 
+            id="bind-username-display" 
+            :value="username" 
+            type="text"
+            class="form-input"
+            disabled
+            placeholder="请先在登录页面输入"
+          >
+        </div>
+        
         <div class="form-group">
           <label for="inviteCode">邀请码</label>
           <input 
@@ -73,10 +91,11 @@
             required
           >
         </div>
-        <button @click="bindDevice" class="btn-primary" :disabled="isLoading">
+        
+        <button @click="bindDevice" class="btn-primary" :disabled="isLoading || !username || !password">
           {{ isLoading ? '绑定中...' : '开始绑定' }}
         </button>
-        <button @click="showBindDevice = false" class="btn-secondary">取消</button>
+        <button @click="showBindDevice = false" class="btn-secondary">返回登录</button>
       </div>
 
       <!-- 二重认证界面 -->
@@ -122,27 +141,40 @@ export default {
     const hasWebAuthn = ref(false)
     const showBindDevice = ref(false)
     const inviteCode = ref('')
+    let checkWebAuthnTimeout = null
 
-    // 检查用户是否有 WebAuthn 设备
+    // 检查用户是否有 WebAuthn 设备（带防抖）
     const checkWebAuthn = async () => {
-      if (!username.value) return
-      
-      try {
-        const response = await fetch('/api/webauthn-check', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ username: username.value }),
-        })
-        
-        if (response.ok) {
-          const data = await response.json()
-          hasWebAuthn.value = data.hasWebAuthn
-        }
-      } catch (error) {
-        console.error('检查 WebAuthn 错误:', error)
+      if (!username.value || username.value.length < 2) {
+        hasWebAuthn.value = false
+        return
       }
+      
+      // 清除之前的定时器
+      if (checkWebAuthnTimeout) {
+        clearTimeout(checkWebAuthnTimeout)
+      }
+      
+      // 设置新的定时器，500ms 后执行
+      checkWebAuthnTimeout = setTimeout(async () => {
+        try {
+          const response = await fetch('/api/webauthn-check', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username: username.value }),
+          })
+          
+          if (response.ok) {
+            const data = await response.json()
+            hasWebAuthn.value = data.hasWebAuthn
+          }
+        } catch (error) {
+          console.error('检查 WebAuthn 错误:', error)
+          hasWebAuthn.value = false
+        }
+      }, 500)
     }
 
     // WebAuthn 登录
@@ -681,6 +713,17 @@ export default {
   color: #666;
   margin: 1rem 0 1.5rem;
   font-size: 0.95rem;
+}
+
+.warning-box {
+  background-color: #fff3cd;
+  border: 1px solid #ffc107;
+  color: #856404;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  text-align: center;
 }
 
 .btn-primary:disabled {
