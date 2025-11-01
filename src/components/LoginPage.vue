@@ -2,7 +2,9 @@
   <div class="login-page">
     <div class="login-container">
       <h1 class="login-title">密码管理器</h1>
-      <div class="form-card">
+      
+      <!-- 账号密码登录表单 -->
+      <div v-if="!showAuthStep" class="form-card">
         <h2>登录</h2>
         <form @submit.prevent="login" class="login-form">
           <div class="form-group">
@@ -33,20 +35,43 @@
           <button 
             type="submit" 
             class="btn-primary login-button"
-            ref="loginBtnRef">
-            <span>登录</span>
+            ref="loginBtnRef"
+            :disabled="isLoading">
+            <span>{{ isLoading ? '验证中...' : '登录' }}</span>
           </button>
         </form>
         <div class="buttons-row">
           <button @click="goToRegister" class="btn-secondary">还没有账号？点击注册</button>
         </div>
       </div>
+
+      <!-- 二重认证界面 -->
+      <div v-else class="form-card auth-card">
+        <h2>🔐 二重认证</h2>
+        <p class="auth-description">请在认证页面选择以下数字：</p>
+        <div class="client-number">{{ clientNumber }}</div>
+        <p class="auth-instruction">
+          点击下方按钮打开认证页面，选择与上方相同的数字
+        </p>
+        <a 
+          :href="`https://web-auth-five.vercel.app/admin?sessionId=${sessionId}`" 
+          target="_blank"
+          class="btn-primary auth-button">
+          打开认证页面
+        </a>
+        <div class="auth-status">
+          <div class="spinner"></div>
+          <span>等待认证中...</span>
+        </div>
+        <p class="auth-timer">剩余时间: {{ remainingTime }}秒</p>
+        <button @click="cancelAuth" class="btn-secondary">取消</button>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 export default {
@@ -55,8 +80,18 @@ export default {
     const password = ref('')
     const router = useRouter()
     const loginBtnRef = ref(null)
+    const isLoading = ref(false)
+    
+    // 二重认证相关状态
+    const showAuthStep = ref(false)
+    const sessionId = ref('')
+    const clientNumber = ref(0)
+    const remainingTime = ref(300) // 5分钟
+    const pollInterval = ref(null)
+    const timerInterval = ref(null)
 
     const login = async () => {
+      isLoading.value = true
       try {
         const response = await fetch('/api/login', {
           method: 'POST',
@@ -71,8 +106,26 @@ export default {
 
         if (response.ok) {
           const data = await response.json()
-          localStorage.setItem('token', data.token)
-          router.push('/dashboard')
+          
+          // 如果需要二重认证
+          if (data.requireAuth) {
+            sessionId.value = data.sessionId
+            clientNumber.value = data.clientNumber
+            showAuthStep.value = true
+            
+            // 计算剩余时间
+            const expiresAt = new Date(data.expiresAt)
+            remainingTime.value = Math.floor((expiresAt - new Date()) / 1000)
+            
+            // 开始轮询认证状态
+            startPolling()
+            // 开始倒计时
+            startTimer()
+          } else {
+            // 直接登录成功（不应该发生，但保留兼容性）
+            localStorage.setItem('token', data.token)
+            router.push('/dashboard')
+          }
         } else {
           const error = await response.json()
           alert(error.error || '登录失败，请检查用户名和密码')
@@ -80,19 +133,93 @@ export default {
       } catch (error) {
         console.error('登录错误:', error)
         alert('登录过程中发生错误')
+      } finally {
+        isLoading.value = false
       }
+    }
+
+    const startPolling = () => {
+      pollInterval.value = setInterval(async () => {
+        try {
+          // 验证二重认证
+          const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              username: username.value,
+              password: password.value,
+              sessionId: sessionId.value,
+            }),
+          })
+
+          if (response.ok) {
+            const data = await response.json()
+            if (data.token) {
+              // 认证成功
+              stopPolling()
+              localStorage.setItem('token', data.token)
+              router.push('/dashboard')
+            }
+          }
+        } catch (error) {
+          console.error('轮询错误:', error)
+        }
+      }, 2000) // 每2秒检查一次
+    }
+
+    const startTimer = () => {
+      timerInterval.value = setInterval(() => {
+        remainingTime.value--
+        if (remainingTime.value <= 0) {
+          stopPolling()
+          alert('认证超时，请重新登录')
+          cancelAuth()
+        }
+      }, 1000)
+    }
+
+    const stopPolling = () => {
+      if (pollInterval.value) {
+        clearInterval(pollInterval.value)
+        pollInterval.value = null
+      }
+      if (timerInterval.value) {
+        clearInterval(timerInterval.value)
+        timerInterval.value = null
+      }
+    }
+
+    const cancelAuth = () => {
+      stopPolling()
+      showAuthStep.value = false
+      sessionId.value = ''
+      clientNumber.value = 0
+      remainingTime.value = 300
     }
 
     const goToRegister = () => {
       router.push('/signup')
     }
 
+    // 组件卸载时清理定时器
+    onUnmounted(() => {
+      stopPolling()
+    })
+
     return {
       username,
       password,
       login,
       goToRegister,
-      loginBtnRef
+      loginBtnRef,
+      isLoading,
+      showAuthStep,
+      sessionId,
+      clientNumber,
+      remainingTime,
+      cancelAuth
     }
   }
 }
@@ -204,6 +331,97 @@ export default {
 
 .buttons-row {
   margin-top: 1.5rem;
+}
+
+/* 二重认证样式 */
+.auth-card {
+  text-align: center;
+}
+
+.auth-description {
+  color: #666;
+  margin: 1rem 0;
+  font-size: 0.95rem;
+}
+
+.client-number {
+  font-size: 4rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin: 1.5rem 0;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, rgba(67, 97, 238, 0.1), rgba(72, 149, 239, 0.1));
+  border-radius: 12px;
+  border: 2px solid var(--primary-color);
+  letter-spacing: 0.1em;
+}
+
+.auth-instruction {
+  color: #555;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.auth-button {
+  display: inline-block;
+  width: 100%;
+  padding: 12px;
+  background-color: var(--primary-color);
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  margin-top: 1rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.auth-button:hover {
+  background-color: var(--secondary-color);
+  transform: translateY(-2px);
+}
+
+.auth-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 1.5rem 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(67, 97, 238, 0.2);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.auth-timer {
+  color: #999;
+  font-size: 0.85rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.btn-primary:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-primary:disabled:hover {
+  background-color: #ccc;
+  transform: none;
 }
 
 /* Responsive design */
