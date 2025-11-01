@@ -4,7 +4,7 @@
       <h1 class="login-title">密码管理器</h1>
       
       <!-- 账号密码登录表单 -->
-      <div v-if="!showAuthStep" class="form-card">
+      <div v-if="!showAuthStep && !showBindDevice" class="form-card">
         <h2>登录</h2>
         <form @submit.prevent="login" class="login-form">
           <div class="form-group">
@@ -14,9 +14,10 @@
               v-model="username" 
               type="text"
               class="form-input"
-              autocomplete="username"
+              autocomplete="username webauthn"
               required
               @keyup.enter="$event.target.form.querySelector('#password').focus()"
+              @blur="checkWebAuthn"
             >
           </div>
           <div class="form-group">
@@ -32,6 +33,17 @@
               @keyup.enter="loginBtnRef.click()"
             >
           </div>
+          
+          <!-- WebAuthn 快速登录按钮 -->
+          <button 
+            v-if="hasWebAuthn"
+            type="button"
+            @click="loginWithWebAuthn"
+            class="btn-webauthn"
+            :disabled="isLoading">
+            <span>🔐 使用设备认证登录</span>
+          </button>
+          
           <button 
             type="submit" 
             class="btn-primary login-button"
@@ -42,7 +54,29 @@
         </form>
         <div class="buttons-row">
           <button @click="goToRegister" class="btn-secondary">还没有账号？点击注册</button>
+          <button v-if="username" @click="showBindDevice = true" class="btn-secondary">绑定新设备</button>
         </div>
+      </div>
+
+      <!-- 绑定设备界面 -->
+      <div v-else-if="showBindDevice" class="form-card">
+        <h2>🔐 绑定 WebAuthn 设备</h2>
+        <p class="bind-description">绑定后，可在此设备上快速登录</p>
+        <div class="form-group">
+          <label for="inviteCode">邀请码</label>
+          <input 
+            id="inviteCode" 
+            v-model="inviteCode" 
+            type="text"
+            class="form-input"
+            placeholder="输入邀请码"
+            required
+          >
+        </div>
+        <button @click="bindDevice" class="btn-primary" :disabled="isLoading">
+          {{ isLoading ? '绑定中...' : '开始绑定' }}
+        </button>
+        <button @click="showBindDevice = false" class="btn-secondary">取消</button>
       </div>
 
       <!-- 二重认证界面 -->
@@ -83,6 +117,221 @@ export default {
     const remainingTime = ref(300) // 5分钟
     const pollInterval = ref(null)
     const timerInterval = ref(null)
+
+    // WebAuthn 相关状态
+    const hasWebAuthn = ref(false)
+    const showBindDevice = ref(false)
+    const inviteCode = ref('')
+
+    // 检查用户是否有 WebAuthn 设备
+    const checkWebAuthn = async () => {
+      if (!username.value) return
+      
+      try {
+        const response = await fetch('/api/webauthn-check', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ username: username.value }),
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          hasWebAuthn.value = data.hasWebAuthn
+        }
+      } catch (error) {
+        console.error('检查 WebAuthn 错误:', error)
+      }
+    }
+
+    // WebAuthn 登录
+    const loginWithWebAuthn = async () => {
+      if (!username.value) {
+        alert('请输入用户名')
+        return
+      }
+
+      isLoading.value = true
+      try {
+        // 开始认证流程
+        const startResponse = await fetch('/api/webauthn-authenticate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'start',
+            username: username.value
+          }),
+        })
+
+        if (!startResponse.ok) {
+          const error = await startResponse.json()
+          alert(error.error || 'WebAuthn 认证失败')
+          isLoading.value = false
+          return
+        }
+
+        const options = await startResponse.json()
+
+        // 调用浏览器 WebAuthn API
+        const credential = await navigator.credentials.get({
+          publicKey: {
+            challenge: Uint8Array.from(atob(options.challenge.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)),
+            allowCredentials: options.allowCredentials.map(cred => ({
+              type: cred.type,
+              id: Uint8Array.from(atob(cred.id.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))
+            })),
+            rpId: options.rpId,
+            timeout: 60000,
+            userVerification: 'preferred'
+          }
+        })
+
+        if (!credential) {
+          alert('认证被取消')
+          isLoading.value = false
+          return
+        }
+
+        // 完成认证
+        const finishResponse = await fetch('/api/webauthn-authenticate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'finish',
+            username: username.value,
+            challenge: options.challenge,
+            credential: {
+              id: credential.id,
+              counter: 0
+            }
+          }),
+        })
+
+        if (finishResponse.ok) {
+          const data = await finishResponse.json()
+          sessionStorage.setItem('token', data.token)
+          router.push('/dashboard')
+        } else {
+          const error = await finishResponse.json()
+          alert(error.error || 'WebAuthn 认证失败')
+        }
+      } catch (error) {
+        console.error('WebAuthn 登录错误:', error)
+        alert('WebAuthn 认证过程中发生错误: ' + error.message)
+      } finally {
+        isLoading.value = false
+      }
+    }
+
+    // 绑定设备
+    const bindDevice = async () => {
+      if (!username.value || !password.value) {
+        alert('请先输入用户名和密码')
+        return
+      }
+
+      if (!inviteCode.value) {
+        alert('请输入邀请码')
+        return
+      }
+
+      isLoading.value = true
+      try {
+        // 开始注册流程
+        const startResponse = await fetch('/api/webauthn-register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'start',
+            username: username.value,
+            inviteCode: inviteCode.value
+          }),
+        })
+
+        if (!startResponse.ok) {
+          const error = await startResponse.json()
+          alert(error.error || '绑定失败')
+          isLoading.value = false
+          return
+        }
+
+        const options = await startResponse.json()
+
+        // 调用浏览器 WebAuthn API 创建凭证
+        const credential = await navigator.credentials.create({
+          publicKey: {
+            challenge: Uint8Array.from(atob(options.challenge.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)),
+            rp: {
+              name: options.rpName,
+              id: options.rpId
+            },
+            user: {
+              id: Uint8Array.from(options.userId, c => c.charCodeAt(0)),
+              name: options.userName,
+              displayName: options.userDisplayName
+            },
+            pubKeyCredParams: [
+              { type: 'public-key', alg: -7 },  // ES256
+              { type: 'public-key', alg: -257 } // RS256
+            ],
+            authenticatorSelection: {
+              authenticatorAttachment: 'platform',
+              userVerification: 'preferred',
+              requireResidentKey: false
+            },
+            timeout: 60000,
+            attestation: 'none'
+          }
+        })
+
+        if (!credential) {
+          alert('绑定被取消')
+          isLoading.value = false
+          return
+        }
+
+        // 完成注册
+        const finishResponse = await fetch('/api/webauthn-register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'finish',
+            username: username.value,
+            challenge: options.challenge,
+            credential: {
+              id: credential.id,
+              publicKey: btoa(String.fromCharCode(...new Uint8Array(credential.response.getPublicKey()))),
+              counter: 0,
+              transports: credential.response.getTransports ? credential.response.getTransports() : []
+            }
+          }),
+        })
+
+        if (finishResponse.ok) {
+          alert('设备绑定成功！')
+          showBindDevice.value = false
+          inviteCode.value = ''
+          hasWebAuthn.value = true
+        } else {
+          const error = await finishResponse.json()
+          alert(error.error || '绑定失败')
+        }
+      } catch (error) {
+        console.error('绑定设备错误:', error)
+        alert('绑定过程中发生错误: ' + error.message)
+      } finally {
+        isLoading.value = false
+      }
+    }
 
     const login = async () => {
       isLoading.value = true
@@ -217,7 +466,13 @@ export default {
       sessionId,
       clientNumber,
       remainingTime,
-      cancelAuth
+      cancelAuth,
+      hasWebAuthn,
+      showBindDevice,
+      inviteCode,
+      checkWebAuthn,
+      loginWithWebAuthn,
+      bindDevice
     }
   }
 }
@@ -291,6 +546,36 @@ export default {
 }
 
 
+
+.btn-webauthn {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-webauthn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-webauthn:active {
+  transform: translateY(0);
+}
+
+.btn-webauthn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+}
 
 .btn-primary {
   width: 100%;
@@ -390,6 +675,12 @@ export default {
   color: #999;
   font-size: 0.85rem;
   margin: 0.5rem 0 1rem;
+}
+
+.bind-description {
+  color: #666;
+  margin: 1rem 0 1.5rem;
+  font-size: 0.95rem;
 }
 
 .btn-primary:disabled {

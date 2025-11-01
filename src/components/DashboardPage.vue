@@ -67,6 +67,10 @@
             <h2>添加新密码</h2>
           </div>
           <password-form @add-password="addPassword" />
+          
+          <!-- WebAuthn 设备管理 -->
+          <webauthn-manager />
+          
           <div class="sidebar-footer">
             <button class="logout-button" @click="logout">
               <span class="icon">🚪</span>
@@ -118,12 +122,14 @@ import { ref, onMounted, computed, watchEffect, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import PasswordList from './PasswordList.vue';
 import PasswordForm from './PasswordForm.vue';
+import WebauthnManager from './WebAuthnManager.vue';
 
 export default {
   name: 'DashboardPage',
   components: {
     PasswordList,
     PasswordForm,
+    WebauthnManager,
   },
   setup() {
     const passwords = ref([]);
