@@ -23,7 +23,7 @@
               class="form-input"
               autocomplete="username webauthn"
               required
-              @keyup.enter="$event.target.form.querySelector('#password').focus()"
+              @keydown.enter.prevent="$event.target.form.querySelector('#password').focus()"
               @blur="checkWebAuthn"
               @input="checkWebAuthn"
             >
@@ -38,7 +38,6 @@
               class="form-input"
               autocomplete="current-password"
               required
-              @keyup.enter="loginBtnRef.click()"
             >
           </div>
           
@@ -46,7 +45,7 @@
           <button 
             v-if="hasWebAuthn"
             type="button"
-            @click="loginWithWebAuthn"
+            @click="loginWithWebAuthn()"
             class="btn-webauthn"
             :disabled="isLoading">
             <span>🔐 使用设备认证登录</span>
@@ -127,6 +126,7 @@
 <script>
 import { ref, onUnmounted, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { startAuthentication, startRegistration } from '@simplewebauthn/browser'
 
 export default {
   setup() {
@@ -139,6 +139,7 @@ export default {
     // 二重认证相关状态
     const showAuthStep = ref(false)
     const sessionId = ref('')
+    const loginProof = ref('')
     const clientNumber = ref(0)
     const remainingTime = ref(300) // 5分钟
     const pollInterval = ref(null)
@@ -215,19 +216,7 @@ export default {
 
         const options = await startResponse.json()
 
-        // 调用浏览器 WebAuthn API
-        const credential = await navigator.credentials.get({
-          publicKey: {
-            challenge: Uint8Array.from(atob(options.challenge.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)),
-            allowCredentials: options.allowCredentials.map(cred => ({
-              type: cred.type,
-              id: Uint8Array.from(atob(cred.id.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))
-            })),
-            rpId: options.rpId,
-            timeout: 60000,
-            userVerification: 'preferred'
-          }
-        })
+        const credential = await startAuthentication({ optionsJSON: options.options })
 
         if (!credential) {
           if (!silent) alert('认证被取消')
@@ -244,11 +233,8 @@ export default {
           body: JSON.stringify({
             action: 'finish',
             username: username.value,
-            challenge: options.challenge,
-            credential: {
-              id: credential.id,
-              counter: 0
-            }
+            ceremonyToken: options.ceremonyToken,
+            credential
           }),
         })
 
@@ -327,7 +313,8 @@ export default {
           body: JSON.stringify({
             action: 'start',
             username: username.value,
-            inviteCode: inviteCode.value
+            inviteCode: inviteCode.value,
+            password: password.value
           }),
         })
 
@@ -340,32 +327,7 @@ export default {
 
         const options = await startResponse.json()
 
-        // 调用浏览器 WebAuthn API 创建凭证
-        const credential = await navigator.credentials.create({
-          publicKey: {
-            challenge: Uint8Array.from(atob(options.challenge.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)),
-            rp: {
-              name: options.rpName,
-              id: options.rpId
-            },
-            user: {
-              id: Uint8Array.from(options.userId, c => c.charCodeAt(0)),
-              name: options.userName,
-              displayName: options.userDisplayName
-            },
-            pubKeyCredParams: [
-              { type: 'public-key', alg: -7 },  // ES256
-              { type: 'public-key', alg: -257 } // RS256
-            ],
-            authenticatorSelection: {
-              authenticatorAttachment: 'platform',
-              userVerification: 'preferred',
-              requireResidentKey: false
-            },
-            timeout: 60000,
-            attestation: 'none'
-          }
-        })
+        const credential = await startRegistration({ optionsJSON: options.options })
 
         if (!credential) {
           alert('绑定被取消')
@@ -382,13 +344,8 @@ export default {
           body: JSON.stringify({
             action: 'finish',
             username: username.value,
-            challenge: options.challenge,
-            credential: {
-              id: credential.id,
-              publicKey: btoa(String.fromCharCode(...new Uint8Array(credential.response.getPublicKey()))),
-              counter: 0,
-              transports: credential.response.getTransports ? credential.response.getTransports() : []
-            }
+            ceremonyToken: options.ceremonyToken,
+            credential
           }),
         })
 
@@ -433,6 +390,8 @@ export default {
           // 如果需要二重认证
           if (data.requireAuth) {
             sessionId.value = data.sessionId
+            loginProof.value = data.loginProof
+            password.value = ''
             clientNumber.value = data.clientNumber
             showAuthStep.value = true
             
@@ -472,7 +431,7 @@ export default {
             },
             body: JSON.stringify({
               username: username.value,
-              password: password.value,
+              loginProof: loginProof.value,
               sessionId: sessionId.value,
             }),
           })
@@ -518,6 +477,7 @@ export default {
       stopPolling()
       showAuthStep.value = false
       sessionId.value = ''
+      loginProof.value = ''
       clientNumber.value = 0
       remainingTime.value = 300
     }
@@ -534,6 +494,7 @@ export default {
     // 组件卸载时清理定时器
     onUnmounted(() => {
       stopPolling()
+      if (checkWebAuthnTimeout) clearTimeout(checkWebAuthnTimeout)
     })
 
     return {

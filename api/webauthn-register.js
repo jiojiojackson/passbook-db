@@ -1,104 +1,80 @@
-const { Pool } = require('pg');
-const crypto = require('crypto');
-
-const pool = new Pool({
-  connectionString: process.env.POSTGRES_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
-});
-
-// 验证邀请码
-function verifyInviteCode(code) {
-  const validCode = process.env.WEBAUTHN_INVITE_CODE;
-  return validCode && code === validCode;
-}
+const bcrypt = require('bcryptjs');
+const { generateRegistrationOptions, verifyRegistrationResponse } = require('@simplewebauthn/server');
+const pool = require('../lib/db');
+const { issueProof, verifyProof } = require('../lib/auth');
+const { saveChallenge, consumeChallenge } = require('../lib/challenges');
+const { rpConfig, validInvite } = require('../lib/webauthn');
+const { HttpError, prepareResponse, bodyOf, text, sendError } = require('../lib/http');
 
 module.exports = async (req, res) => {
-  if (req.method === 'POST') {
-    const { action, username, inviteCode, credential, challenge } = req.body;
-
-    try {
-      // 开始注册流程
-      if (action === 'start') {
-        // 验证邀请码
-        if (!verifyInviteCode(inviteCode)) {
-          return res.status(403).json({ error: '邀请码无效' });
-        }
-
-        // 验证用户是否存在
-        const { rows } = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
-        if (rows.length === 0) {
-          return res.status(404).json({ error: '用户不存在' });
-        }
-
-        const userId = rows[0].id;
-
-        // 生成挑战值
-        const challenge = crypto.randomBytes(32).toString('base64url');
-        
-        // 存储挑战值（临时，5分钟过期）
-        await pool.query(
-          'INSERT INTO webauthn_challenges (user_id, challenge, expires_at) VALUES ($1, $2, NOW() + INTERVAL \'5 minutes\')',
-          [userId, challenge]
-        );
-
-        return res.status(200).json({
-          challenge,
-          userId: userId.toString(),
-          rpName: '密码管理器',
-          rpId: req.headers.host?.split(':')[0] || 'localhost',
-          userName: username,
-          userDisplayName: username
-        });
+  if (!prepareResponse(res, req.method, ['POST'])) return;
+  try {
+    const { action, username, password, inviteCode, credential, ceremonyToken } = bodyOf(req);
+    text(username, 'username', { max: 255 });
+    const { rpID, origin } = rpConfig();
+    if (action === 'start') {
+      text(password, 'password', { max: 1024 });
+      if (!validInvite(inviteCode)) throw new HttpError(403, '邀请码无效');
+      const { rows } = await pool.query('SELECT id, password_hash FROM users WHERE username = $1', [username]);
+      const user = rows[0];
+      if (!user || !await bcrypt.compare(password, user.password_hash)) {
+        throw new HttpError(401, 'Invalid credentials');
       }
-
-      // 完成注册流程
-      if (action === 'finish') {
-        const { rows: userRows } = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
-        if (userRows.length === 0) {
-          return res.status(404).json({ error: '用户不存在' });
-        }
-
-        const userId = userRows[0].id;
-
-        // 验证挑战值
-        const { rows: challengeRows } = await pool.query(
-          'SELECT challenge FROM webauthn_challenges WHERE user_id = $1 AND challenge = $2 AND expires_at > NOW()',
-          [userId, challenge]
-        );
-
-        if (challengeRows.length === 0) {
-          return res.status(400).json({ error: '挑战值无效或已过期' });
-        }
-
-        // 存储凭证
-        await pool.query(
-          `INSERT INTO webauthn_credentials 
-           (user_id, credential_id, public_key, counter, transports, created_at) 
-           VALUES ($1, $2, $3, $4, $5, NOW())`,
-          [
-            userId,
-            credential.id,
-            credential.publicKey,
-            credential.counter || 0,
-            JSON.stringify(credential.transports || [])
-          ]
-        );
-
-        // 清理挑战值
-        await pool.query('DELETE FROM webauthn_challenges WHERE user_id = $1', [userId]);
-
-        return res.status(200).json({ success: true, message: '设备绑定成功' });
-      }
-
-      return res.status(400).json({ error: '无效的操作' });
-    } catch (error) {
-      console.error('WebAuthn registration error:', error);
-      res.status(500).json({ error: '服务器错误' });
+      const { rows: existing } = await pool.query('SELECT credential_id FROM webauthn_credentials WHERE user_id = $1', [user.id]);
+      const options = await generateRegistrationOptions({
+        rpName: 'Passbook 密码管理器',
+        rpID,
+        userID: new Uint8Array(Buffer.from(String(user.id))),
+        userName: username,
+        attestationType: 'none',
+        supportedAlgorithmIDs: [-7, -257],
+        authenticatorSelection: {
+          authenticatorAttachment: 'platform',
+          residentKey: 'discouraged',
+          userVerification: 'required',
+        },
+        excludeCredentials: existing.map(row => ({ id: row.credential_id })),
+      });
+      await saveChallenge(user.id, options.challenge);
+      return res.status(200).json({
+        options,
+        ceremonyToken: issueProof({ userId: user.id, username, challenge: options.challenge }, 'webauthn-register'),
+      });
     }
-  } else {
-    res.setHeader('Allow', ['POST']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
+
+    if (action !== 'finish') throw new HttpError(400, '无效的操作');
+    const proof = verifyProof(ceremonyToken, 'webauthn-register');
+    if (proof.username !== username || typeof proof.challenge !== 'string') {
+      throw new HttpError(401, 'Invalid registration session');
+    }
+    if (!credential || typeof credential.id !== 'string' || !credential.response) {
+      throw new HttpError(400, '完整的设备注册响应为必填项');
+    }
+    await consumeChallenge(proof.userId, proof.challenge);
+    let verification;
+    try {
+      verification = await verifyRegistrationResponse({
+        response: credential,
+        expectedChallenge: proof.challenge,
+        expectedOrigin: origin,
+        expectedRPID: rpID,
+        requireUserVerification: true,
+        supportedAlgorithmIDs: [-7, -257],
+      });
+    } catch {
+      throw new HttpError(400, '设备注册验证失败');
+    }
+    if (!verification.verified || !verification.registrationInfo) {
+      throw new HttpError(400, '设备注册验证失败');
+    }
+    const verified = verification.registrationInfo.credential;
+    await pool.query(
+      'INSERT INTO webauthn_credentials (user_id, credential_id, public_key, counter, transports, created_at) VALUES ($1, $2, $3, $4, $5, NOW())',
+      [proof.userId, verified.id, 'cose:' + Buffer.from(verified.publicKey).toString('base64url'), verified.counter, JSON.stringify(verified.transports || [])],
+    );
+    return res.status(200).json({ success: true, message: '设备绑定成功' });
+  } catch (error) {
+    if (error.code === '23505') return res.status(409).json({ error: '设备已绑定' });
+    return sendError(res, error);
   }
 };

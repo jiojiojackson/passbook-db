@@ -27,7 +27,7 @@
                 class="form-input"
                 placeholder="请输入密码" 
                 required
-                minlength="6"
+                minlength="8"
               >
             </div>
             <div class="form-group">
@@ -39,7 +39,7 @@
                 class="form-input"
                 placeholder="请再次输入密码" 
                 required
-                minlength="6"
+                minlength="8"
               >
             </div>
             <button type="submit" class="btn-primary">注册</button>
@@ -69,8 +69,13 @@ export default {
         return;
       }
 
-      if (this.password.length < 6) {
-        alert('密码长度至少为6位');
+      if (this.password.length < 8) {
+        alert('密码长度至少为8位');
+        return;
+      }
+
+      if (new TextEncoder().encode(this.password).length > 72) {
+        alert('密码不能超过 72 个 UTF-8 字节');
         return;
       }
 

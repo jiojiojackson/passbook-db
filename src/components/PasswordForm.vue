@@ -71,6 +71,7 @@
   
 <script>
 import { ref, computed } from 'vue'
+import { generateSecurePassword } from '../utils/password.mjs'
 
 export default {
   name: 'PasswordForm',
@@ -95,30 +96,7 @@ export default {
     }
 
     const generatePassword = () => {
-      const lowerChars = 'abcdefghijklmnopqrstuvwxyz'
-      const upperChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-      const numbers = '0123456789'
-      const symbols = '!@#$%^&*()_-+=<>?'
-      
-      const allChars = lowerChars + upperChars + numbers + symbols
-      let generatedPassword = ''
-      
-      // Ensure at least one of each type
-      generatedPassword += lowerChars.charAt(Math.floor(Math.random() * lowerChars.length))
-      generatedPassword += upperChars.charAt(Math.floor(Math.random() * upperChars.length))
-      generatedPassword += numbers.charAt(Math.floor(Math.random() * numbers.length))
-      generatedPassword += symbols.charAt(Math.floor(Math.random() * symbols.length))
-      
-      // Add more random characters to reach desired length (16)
-      for (let i = 0; i < 12; i++) {
-        generatedPassword += allChars.charAt(Math.floor(Math.random() * allChars.length))
-      }
-      
-      // Shuffle the password
-      password.value = generatedPassword
-        .split('')
-        .sort(() => 0.5 - Math.random())
-        .join('')
+      password.value = generateSecurePassword()
     }
 
     // Password strength calculation

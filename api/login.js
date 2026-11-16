@@ -1,94 +1,76 @@
-const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const { Pool } = require('pg');
+const pool = require('../lib/db');
+const { issueSession, issueProof, verifyProof } = require('../lib/auth');
+const { newChallenge, saveChallenge, consumeChallenge } = require('../lib/challenges');
+const { HttpError, prepareResponse, bodyOf, text, sendError } = require('../lib/http');
 
-const pool = new Pool({
-  connectionString: process.env.POSTGRES_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
-});
+const authBase = 'https://web-auth-five.vercel.app';
+
+async function authRequest(path, options = {}) {
+  const response = await fetch(new URL(path, authBase), { ...options, signal: AbortSignal.timeout(10000) });
+  if (!response.ok) throw new HttpError(502, '认证服务暂时不可用');
+  return response.json();
+}
 
 module.exports = async (req, res) => {
-  if (req.method === 'POST') {
-    const { username, password, sessionId, timezone } = req.body;
+  if (!prepareResponse(res, req.method, ['POST'])) return;
+  try {
+    const { username, password, sessionId, loginProof, timezone } = bodyOf(req);
+    text(username, 'username', { max: 255 });
 
-    try {
-      // 如果提供了sessionId，说明是第二步：验证二重认证
-      if (sessionId) {
-        // 检查二重认证状态
-        const authResponse = await fetch(`https://web-auth-five.vercel.app/api/auth/status?sessionId=${sessionId}`);
-        const authData = await authResponse.json();
+    if (sessionId) {
+      text(sessionId, 'sessionId', { max: 1024 });
+      const proof = verifyProof(loginProof, 'login-2fa');
+      if (proof.sessionId !== sessionId || typeof proof.challenge !== 'string') {
+        throw new HttpError(401, 'Invalid authentication session');
+      }
+      const { rows } = await pool.query('SELECT id FROM users WHERE id = $1 AND username = $2', [proof.userId, username]);
+      if (rows.length !== 1) throw new HttpError(401, 'Invalid credentials');
 
-        if (!authData.success || authData.data.status !== 'verified') {
-          return res.status(401).json({ error: '二重认证未通过' });
-        }
-
-        // 从sessionId获取用户信息（需要临时存储）
-        const { rows } = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-        
-        if (rows.length === 0) {
-          return res.status(401).json({ error: 'Invalid credentials' });
-        }
-
-        const user = rows[0];
-        const jwtToken = jwt.sign({ 
-          userId: user.id,
-          lastActivityTime: Date.now()
-        }, process.env.JWT_SECRET, { expiresIn: process.env.TOKEN_TIME });
-        return res.status(200).json({ token: jwtToken });
+      const path = `/api/auth/status?${new URLSearchParams({ sessionId })}`;
+      const authData = await authRequest(path);
+      if (authData.success !== true || authData.data?.status !== 'verified') {
+        throw new HttpError(401, '二重认证未通过');
       }
 
-      // 第一步：验证账号密码
-      const { rows } = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-      
-      if (rows.length === 0) {
-        return res.status(401).json({ error: 'Invalid credentials' });
-      }
-
-      const user = rows[0];
-      
-      // Verify password
-      const validPassword = await bcrypt.compare(password, user.password_hash);
-
-      if (!validPassword) {
-        return res.status(401).json({ error: 'Invalid credentials' });
-      }
-
-      // 账号密码正确，创建二重认证会话
-      const authResponse = await fetch('https://web-auth-five.vercel.app/api/auth/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          appName: '密码管理器',
-          clientTime: new Date().toISOString(),
-          location: timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown',
-          browserFingerprint: req.headers['user-agent'] || 'unknown',
-          userAgent: req.headers['user-agent']
-        })
-      });
-
-      const authData = await authResponse.json();
-
-      if (!authData.success) {
-        return res.status(500).json({ error: '创建认证会话失败' });
-      }
-
-      // 返回认证会话信息，需要用户进行二重认证
-      res.status(200).json({
-        requireAuth: true,
-        sessionId: authData.data.sessionId,
-        clientNumber: authData.data.clientNumber,
-        expiresAt: authData.data.expiresAt
-      });
-    } catch (error) {
-      console.error('Login error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      // Bind the verified external session to the password-verified account, once.
+      await consumeChallenge(proof.userId, proof.challenge);
+      return res.status(200).json({ token: issueSession(proof.userId) });
     }
-  } else {
-    res.setHeader('Allow', ['POST']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
+
+    text(password, 'password', { max: 1024 });
+    const { rows } = await pool.query('SELECT id, password_hash FROM users WHERE username = $1', [username]);
+    const user = rows[0];
+    if (!user || !await bcrypt.compare(password, user.password_hash)) {
+      throw new HttpError(401, 'Invalid credentials');
+    }
+
+    const authData = await authRequest('/api/auth/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        appName: '密码管理器',
+        clientTime: new Date().toISOString(),
+        location: typeof timezone === 'string' ? timezone.slice(0, 100) : 'Unknown',
+        browserFingerprint: req.headers['user-agent'] || 'unknown',
+        userAgent: req.headers['user-agent'],
+      }),
+    });
+    const data = authData.data;
+    const expiry = Math.min(new Date(data?.expiresAt).getTime(), Date.now() + 300000);
+    if (authData.success !== true || typeof data?.sessionId !== 'string' || !Number.isFinite(expiry) || expiry <= Date.now()) {
+      throw new HttpError(502, '创建认证会话失败');
+    }
+    const challenge = newChallenge();
+    await saveChallenge(user.id, challenge, new Date(expiry));
+    return res.status(200).json({
+      requireAuth: true,
+      sessionId: data.sessionId,
+      clientNumber: data.clientNumber,
+      expiresAt: new Date(expiry).toISOString(),
+      loginProof: issueProof({ userId: user.id, sessionId: data.sessionId, challenge }, 'login-2fa'),
+    });
+  } catch (error) {
+    return sendError(res, error);
   }
 };

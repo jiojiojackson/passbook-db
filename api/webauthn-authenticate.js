@@ -1,116 +1,75 @@
-const { Pool } = require('pg');
-const crypto = require('crypto');
-const jwt = require('jsonwebtoken');
-
-const pool = new Pool({
-  connectionString: process.env.POSTGRES_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
-});
+const { generateAuthenticationOptions, verifyAuthenticationResponse } = require('@simplewebauthn/server');
+const pool = require('../lib/db');
+const { issueSession, issueProof, verifyProof } = require('../lib/auth');
+const { saveChallenge, consumeChallenge } = require('../lib/challenges');
+const { rpConfig, credentialPublicKey, transports } = require('../lib/webauthn');
+const { HttpError, prepareResponse, bodyOf, text, sendError } = require('../lib/http');
 
 module.exports = async (req, res) => {
-  if (req.method === 'POST') {
-    const { action, username, credential, challenge } = req.body;
-
-    try {
-      // 开始认证流程
-      if (action === 'start') {
-        // 验证用户是否存在
-        const { rows: userRows } = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
-        if (userRows.length === 0) {
-          return res.status(404).json({ error: '用户不存在' });
-        }
-
-        const userId = userRows[0].id;
-
-        // 检查用户是否有绑定的设备
-        const { rows: credentialRows } = await pool.query(
-          'SELECT credential_id FROM webauthn_credentials WHERE user_id = $1',
-          [userId]
-        );
-
-        if (credentialRows.length === 0) {
-          return res.status(404).json({ error: '未绑定设备' });
-        }
-
-        // 生成挑战值
-        const challenge = crypto.randomBytes(32).toString('base64url');
-        
-        // 存储挑战值
-        await pool.query(
-          'INSERT INTO webauthn_challenges (user_id, challenge, expires_at) VALUES ($1, $2, NOW() + INTERVAL \'5 minutes\')',
-          [userId, challenge]
-        );
-
-        return res.status(200).json({
-          challenge,
-          allowCredentials: credentialRows.map(row => ({
-            type: 'public-key',
-            id: row.credential_id
-          })),
-          rpId: req.headers.host?.split(':')[0] || 'localhost'
-        });
-      }
-
-      // 完成认证流程
-      if (action === 'finish') {
-        const { rows: userRows } = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
-        if (userRows.length === 0) {
-          return res.status(404).json({ error: '用户不存在' });
-        }
-
-        const userId = userRows[0].id;
-
-        // 验证挑战值
-        const { rows: challengeRows } = await pool.query(
-          'SELECT challenge FROM webauthn_challenges WHERE user_id = $1 AND challenge = $2 AND expires_at > NOW()',
-          [userId, challenge]
-        );
-
-        if (challengeRows.length === 0) {
-          return res.status(400).json({ error: '挑战值无效或已过期' });
-        }
-
-        // 验证凭证
-        const { rows: credentialRows } = await pool.query(
-          'SELECT public_key, counter FROM webauthn_credentials WHERE user_id = $1 AND credential_id = $2',
-          [userId, credential.id]
-        );
-
-        if (credentialRows.length === 0) {
-          return res.status(400).json({ error: '凭证无效' });
-        }
-
-        // 更新计数器
-        await pool.query(
-          'UPDATE webauthn_credentials SET counter = $1, last_used_at = NOW() WHERE user_id = $2 AND credential_id = $3',
-          [credential.counter || 0, userId, credential.id]
-        );
-
-        // 清理挑战值
-        await pool.query('DELETE FROM webauthn_challenges WHERE user_id = $1', [userId]);
-
-        // 生成 JWT token
-        const jwtToken = jwt.sign({ 
-          userId: userId,
-          lastActivityTime: Date.now()
-        }, process.env.JWT_SECRET, { expiresIn: process.env.TOKEN_TIME });
-
-        return res.status(200).json({ 
-          success: true, 
-          token: jwtToken,
-          message: 'WebAuthn 认证成功' 
-        });
-      }
-
-      return res.status(400).json({ error: '无效的操作' });
-    } catch (error) {
-      console.error('WebAuthn authentication error:', error);
-      res.status(500).json({ error: '服务器错误' });
+  if (!prepareResponse(res, req.method, ['POST'])) return;
+  try {
+    const { action, username, credential, ceremonyToken } = bodyOf(req);
+    text(username, 'username', { max: 255 });
+    const { rpID, origin } = rpConfig();
+    if (action === 'start') {
+      const { rows } = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
+      if (!rows.length) throw new HttpError(404, '未绑定设备');
+      const userId = rows[0].id;
+      const { rows: credentials } = await pool.query('SELECT credential_id, transports FROM webauthn_credentials WHERE user_id = $1', [userId]);
+      if (!credentials.length) throw new HttpError(404, '未绑定设备');
+      const options = await generateAuthenticationOptions({
+        rpID,
+        allowCredentials: credentials.map(row => ({ id: row.credential_id, transports: transports(row.transports) })),
+        userVerification: 'required',
+      });
+      await saveChallenge(userId, options.challenge);
+      return res.status(200).json({
+        options,
+        ceremonyToken: issueProof({ userId, username, challenge: options.challenge }, 'webauthn-authenticate'),
+      });
     }
-  } else {
-    res.setHeader('Allow', ['POST']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
+
+    if (action !== 'finish') throw new HttpError(400, '无效的操作');
+    const proof = verifyProof(ceremonyToken, 'webauthn-authenticate');
+    if (proof.username !== username || typeof proof.challenge !== 'string') {
+      throw new HttpError(401, 'Invalid authentication session');
+    }
+    if (!credential || typeof credential.id !== 'string' || !credential.response) {
+      throw new HttpError(400, '完整的设备签名响应为必填项');
+    }
+    const { rows } = await pool.query(
+      'SELECT public_key, counter, transports FROM webauthn_credentials WHERE user_id = $1 AND credential_id = $2',
+      [proof.userId, credential.id],
+    );
+    if (rows.length !== 1) throw new HttpError(401, '凭证无效');
+    const stored = rows[0];
+    await consumeChallenge(proof.userId, proof.challenge);
+    let verification;
+    try {
+      verification = await verifyAuthenticationResponse({
+        response: credential,
+        expectedChallenge: proof.challenge,
+        expectedOrigin: origin,
+        expectedRPID: rpID,
+        requireUserVerification: true,
+        credential: {
+          id: credential.id,
+          publicKey: credentialPublicKey(stored.public_key),
+          counter: Number(stored.counter),
+          transports: transports(stored.transports),
+        },
+      });
+    } catch {
+      throw new HttpError(401, '设备签名验证失败');
+    }
+    if (!verification.verified) throw new HttpError(401, '设备签名验证失败');
+    const update = await pool.query(
+      'UPDATE webauthn_credentials SET counter = $1, last_used_at = NOW() WHERE user_id = $2 AND credential_id = $3 AND counter = $4',
+      [verification.authenticationInfo.newCounter, proof.userId, credential.id, stored.counter],
+    );
+    if (update.rowCount !== 1) throw new HttpError(401, '设备凭证已变更，请重试');
+    return res.status(200).json({ success: true, token: issueSession(proof.userId), message: 'WebAuthn 认证成功' });
+  } catch (error) {
+    return sendError(res, error);
   }
 };

@@ -22,3 +22,9 @@ server.log
 *.njsproj
 *.sln
 *.sw?
+
+# Secrets and local deployment state
+.env
+.env.*
+!.env.example
+.vercel
